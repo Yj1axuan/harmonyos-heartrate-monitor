@@ -1,0 +1,8 @@
+{
+  "string": [
+    { "name": "module_desc", "value": "心率监控器主模块" },
+    { "name": "EntryAbility_desc", "value": "心率监控器" },
+    { "name": "EntryAbility_label", "value": "心率监控器" }
+  ]
+}
+
