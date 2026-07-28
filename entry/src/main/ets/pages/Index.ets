@@ -1,180 +1,106 @@
+import { AppColors } from '../ui/theme/AppTheme';
+import { HomePage } from '../ui/pages/HomePage';
+import { FavoritePage, HistoryPage } from '../ui/pages/HistoryPage';
+import { AboutPage, SettingsPage } from '../ui/pages/SettingsPage';
+import { AppContainer } from '../core/di/AppContainer';
+import { HeartRateUiState } from '../application/state/HeartRateUiState';
+import { SettingsUiState } from '../application/state/SettingsUiState';
+import { HeartRateViewModel } from '../application/viewmodel/HeartRateViewModel';
+import { HistoryViewModel } from '../application/viewmodel/HistoryViewModel';
+import { SettingsViewModel } from '../application/viewmodel/SettingsViewModel';
+
 @Entry
 @Component
 struct Index {
+  private heartRateViewModel: HeartRateViewModel = AppContainer.createHeartRateViewModel();
+  private historyViewModel: HistoryViewModel = AppContainer.createHistoryViewModel();
+  private settingsViewModel: SettingsViewModel = AppContainer.createSettingsViewModel();
+  @State private heartRateState: HeartRateUiState = this.heartRateViewModel.state;
+  @State private settingsState: SettingsUiState = this.settingsViewModel.state;
   @State private selectedTab: number = 0;
-  @State private connected: boolean = false;
-  @State private bpm: number = 0;
+  @State private showAbout: boolean = false;
 
   @Builder
-  private tabLabel(title: string, active: boolean) {
-    Column({ space: 3 }) {
-      Text(active ? '●' : '○')
-        .fontSize(14)
-        .fontColor(active ? '#D92D4B' : '#7A808A')
+  private navItem(index: number, icon: string, title: string) {
+    Column({ space: 2 }) {
+      Text(icon)
+        .fontSize(26)
+        .fontColor(this.selectedTab === index ? AppColors.PRIMARY : '#3F4149')
       Text(title)
         .fontSize(12)
-        .fontColor(active ? '#D92D4B' : '#59606B')
+        .fontWeight(this.selectedTab === index ? FontWeight.Medium : FontWeight.Regular)
+        .fontColor(this.selectedTab === index ? AppColors.PRIMARY : '#3F4149')
     }
-    .width(80)
-    .height(52)
+    .width('25%')
+    .height(58)
     .justifyContent(FlexAlign.Center)
+    .backgroundColor(this.selectedTab === index ? '#E4E4EA' : Color.Transparent)
+    .borderRadius(26)
+    .onClick(() => {
+      this.selectedTab = index;
+    })
   }
 
   @Builder
-  private monitoringPage() {
-    Column() {
-      Row() {
-        Column({ space: 4 }) {
-          Text('心率监控器')
-            .fontSize(26)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#171A1F')
-          Text(this.connected ? '心率带已连接' : '等待连接心率设备')
-            .fontSize(14)
-            .fontColor('#69707B')
-        }
-        .alignItems(HorizontalAlign.Start)
-
-        Blank()
-
-        Text(this.connected ? '已连接' : '未连接')
-          .fontSize(12)
-          .fontColor(this.connected ? '#137A4A' : '#69707B')
-          .backgroundColor(this.connected ? '#E7F6EE' : '#EEF0F3')
-          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-          .borderRadius(6)
-      }
-      .width('100%')
-
-      Column({ space: 8 }) {
-        Text(this.bpm > 0 ? this.bpm.toString() : '--')
-          .fontSize(76)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#D92D4B')
-        Text('BPM')
-          .fontSize(15)
-          .fontColor('#69707B')
-      }
-      .layoutWeight(1)
-      .justifyContent(FlexAlign.Center)
-
-      Button(this.connected ? '断开设备' : '扫描心率设备')
-        .width('100%')
-        .height(50)
-        .fontSize(16)
-        .fontWeight(FontWeight.Medium)
-        .fontColor('#FFFFFF')
-        .backgroundColor(this.connected ? '#4C535D' : '#D92D4B')
-        .borderRadius(8)
-        .onClick(() => {
-          this.connected = !this.connected;
-          this.bpm = this.connected ? 72 : 0;
-        })
-
-      Text('当前为界面骨架，下一阶段接入真机 BLE。')
-        .fontSize(12)
-        .fontColor('#858B94')
-        .margin({ top: 12 })
-    }
-    .width('100%')
-    .height('100%')
-    .padding({ left: 20, right: 20, top: 24, bottom: 18 })
-    .backgroundColor('#F7F8FA')
-  }
-
-  @Builder
-  private historyPage() {
-    Column({ space: 20 }) {
-      Text('历史记录')
-        .fontSize(26)
-        .fontWeight(FontWeight.Bold)
-        .width('100%')
-        .fontColor('#171A1F')
-      Column({ space: 12 }) {
-        Text('暂无监测记录')
-          .fontSize(18)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#30343A')
-        Text('连接设备后，心率数据将在这里按会话展示。')
-          .fontSize(14)
-          .fontColor('#747B85')
-      }
-      .layoutWeight(1)
-      .width('100%')
-      .justifyContent(FlexAlign.Center)
-    }
-    .width('100%')
-    .height('100%')
-    .padding(20)
-    .backgroundColor('#F7F8FA')
-  }
-
-  @Builder
-  private settingsPage() {
-    Column({ space: 0 }) {
-      Text('设置')
-        .fontSize(26)
-        .fontWeight(FontWeight.Bold)
-        .width('100%')
-        .fontColor('#171A1F')
-        .margin({ bottom: 20 })
-
-      this.settingRow('自动重连', '设备断开后自动尝试恢复连接', true)
-      Divider().color('#E3E5E8')
-      this.settingRow('后台监测', '使用蓝牙长时任务持续记录', false)
-      Divider().color('#E3E5E8')
-      this.settingRow('心率预警', '超过阈值时发送通知', false)
-    }
-    .width('100%')
-    .height('100%')
-    .padding(20)
-    .backgroundColor('#F7F8FA')
-  }
-
-  @Builder
-  private settingRow(title: string, description: string, enabled: boolean) {
+  private bottomNavigation() {
     Row() {
-      Column({ space: 4 }) {
-        Text(title)
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#25292F')
-        Text(description)
-          .fontSize(13)
-          .fontColor('#777E88')
-      }
-      .alignItems(HorizontalAlign.Start)
-      .layoutWeight(1)
-
-      Toggle({ type: ToggleType.Switch, isOn: enabled })
-        .enabled(false)
+      this.navItem(0, '⌂', '首页')
+      this.navItem(1, '◷', '历史')
+      this.navItem(2, '☆', '收藏')
+      this.navItem(3, '⚙', '设置')
     }
-    .width('100%')
-    .height(76)
+    .width('calc(100% - 28vp)')
+    .height(66)
+    .padding(4)
+    .margin({ left: 14, right: 14, bottom: 10 })
+    .backgroundColor('#F8F7FAF2')
+    .border({ width: 1, color: '#FFFFFFCC' })
+    .borderRadius(34)
+    .shadow({ radius: 18, color: '#25000000', offsetY: 5 })
   }
 
   build() {
-    Tabs({ barPosition: BarPosition.End, index: this.selectedTab }) {
-      TabContent() {
-        this.monitoringPage()
+    Stack({ alignContent: Alignment.Bottom }) {
+      if (this.showAbout) {
+        AboutPage({
+          onBack: () => {
+            this.showAbout = false;
+          }
+        })
+      } else {
+        if (this.selectedTab === 0) {
+          HomePage({
+            state: this.heartRateState,
+            onConnectionToggle: () => {
+              this.heartRateViewModel.toggleConnection();
+            }
+          })
+        } else if (this.selectedTab === 1) {
+          HistoryPage({
+            summary: this.historyViewModel.summary,
+            sessions: this.historyViewModel.sessions
+          })
+        } else if (this.selectedTab === 2) {
+          FavoritePage({ devices: this.historyViewModel.favoriteDevices })
+        } else {
+          SettingsPage({
+            state: this.settingsState,
+            onRecordHistoryChange: (value: boolean) => { this.settingsViewModel.setRecordHistory(value); },
+            onHeartbeatAnimationChange: (value: boolean) => { this.settingsViewModel.setHeartbeatAnimation(value); },
+            onDisplaySpeedChange: (value: boolean) => { this.settingsViewModel.setDisplaySpeed(value); },
+            onHideFromRecentsChange: (value: boolean) => { this.settingsViewModel.setHideFromRecents(value); },
+            onAutoConnectChange: (value: boolean) => { this.settingsViewModel.setAutoConnect(value); },
+            onAutoReconnectChange: (value: boolean) => { this.settingsViewModel.setAutoReconnect(value); },
+            onOpenAbout: () => {
+              this.showAbout = true;
+            }
+          })
+        }
+        this.bottomNavigation()
       }
-      .tabBar(this.tabLabel('监测', this.selectedTab === 0))
-
-      TabContent() {
-        this.historyPage()
-      }
-      .tabBar(this.tabLabel('历史', this.selectedTab === 1))
-
-      TabContent() {
-        this.settingsPage()
-      }
-      .tabBar(this.tabLabel('设置', this.selectedTab === 2))
     }
-    .barHeight(58)
-    .barBackgroundColor('#FFFFFF')
-    .backgroundColor('#F7F8FA')
-    .onChange((index: number) => {
-      this.selectedTab = index;
-    })
+    .width('100%')
+    .height('100%')
+    .backgroundColor(AppColors.BACKGROUND)
   }
 }
