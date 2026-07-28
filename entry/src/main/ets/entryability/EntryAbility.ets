@@ -1,12 +1,14 @@
 import { AbilityConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
+import { AppContainer } from '../core/di/AppContainer';
 
 const DOMAIN = 0x0000;
 const TAG = 'HeartRate';
 
 export default class EntryAbility extends UIAbility {
   onCreate(_want: Want, _launchParam: AbilityConstant.LaunchParam): void {
+    AppContainer.initialize(this.context);
     hilog.info(DOMAIN, TAG, 'EntryAbility created');
   }
 
@@ -20,4 +22,3 @@ export default class EntryAbility extends UIAbility {
     });
   }
 }
-

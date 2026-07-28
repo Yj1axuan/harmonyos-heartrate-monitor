@@ -1,4 +1,4 @@
-import { HeartRateRepository, SnapshotListener } from '../../domain/HeartRateRepository';
+import { DevicesListener, HeartRateRepository, SnapshotListener } from '../../domain/HeartRateRepository';
 import { HeartRateSnapshot } from '../../domain/model/MonitoringState';
 
 export class ObserveHeartRateUseCase {
@@ -10,6 +10,10 @@ export class ObserveHeartRateUseCase {
 
   execute(listener: SnapshotListener): void {
     this.repository.observe(listener);
+  }
+
+  observeDevices(listener: DevicesListener): void {
+    this.repository.observeDevices(listener);
   }
 
   current(): HeartRateSnapshot {

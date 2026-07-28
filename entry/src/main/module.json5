@@ -8,6 +8,16 @@
     "deliveryWithInstall": true,
     "installationFree": false,
     "pages": "$profile:main_pages",
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.ACCESS_BLUETOOTH",
+        "reason": "$string:bluetooth_permission_reason",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "inuse"
+        }
+      }
+    ],
     "abilities": [
       {
         "name": "EntryAbility",
@@ -28,4 +38,3 @@
     ]
   }
 }
-

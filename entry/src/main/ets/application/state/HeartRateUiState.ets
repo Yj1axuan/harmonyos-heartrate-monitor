@@ -1,4 +1,5 @@
 import { MonitoringState } from '../../domain/model/MonitoringState';
+import { HeartRateDevice } from '../../domain/port/BleHeartRatePort';
 
 @Observed
 export class HeartRateUiState {
@@ -7,8 +8,18 @@ export class HeartRateUiState {
   deviceId: string = '';
   deviceName: string = '';
   updatedAt: number = 0;
+  devices: HeartRateDevice[] = [];
+  statusMessage: string = '';
 
   get connected(): boolean {
     return this.monitoringState === MonitoringState.Connected;
+  }
+
+  get scanning(): boolean {
+    return this.monitoringState === MonitoringState.Scanning;
+  }
+
+  get failed(): boolean {
+    return this.monitoringState === MonitoringState.Failed;
   }
 }

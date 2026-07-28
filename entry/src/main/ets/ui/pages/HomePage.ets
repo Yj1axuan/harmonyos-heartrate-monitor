@@ -4,7 +4,8 @@ import { HeartRateUiState } from '../../application/state/HeartRateUiState';
 @Component
 export struct HomePage {
   @ObjectLink state: HeartRateUiState;
-  onConnectionToggle: () => void = () => {};
+  onOpenDevices: () => void = () => {};
+  onDisconnect: () => void = () => {};
 
   @Builder
   private heartRateCard() {
@@ -190,30 +191,32 @@ export struct HomePage {
 
         this.realtimeChart()
 
-        this.actionRow('⌁', this.state.connected ? '已连接设备 ' + this.state.deviceName : '可用设备', AppColors.SURFACE,
-          AppColors.TEXT, () => {})
+        this.actionRow('⌁', this.state.connected ? '已连接设备 ' + this.state.deviceName :
+          (this.state.scanning ? '正在扫描心率设备' :
+            (this.state.devices.length > 0 ? '发现 ' + this.state.devices.length.toString() + ' 台心率设备' : '可用设备')),
+          AppColors.SURFACE,
+          AppColors.TEXT, this.onOpenDevices)
 
         if (this.state.connected) {
           this.actionRow('⛶', '进入全屏模式', AppColors.PRIMARY_SOFT, '#344C8B', () => {})
+
+          Row({ space: 10 }) {
+            Text('⌁')
+              .fontSize(21)
+              .fontColor(AppColors.WHITE)
+            Text('断开连接')
+              .fontSize(18)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(AppColors.WHITE)
+          }
+          .width('100%')
+          .height(56)
+          .justifyContent(FlexAlign.Center)
+          .backgroundColor(AppColors.ERROR)
+          .borderRadius(28)
+          .onClick(this.onDisconnect)
         }
 
-        Row({ space: 10 }) {
-          Text(this.state.connected ? '⌁' : '⌕')
-            .fontSize(21)
-            .fontColor(AppColors.WHITE)
-          Text(this.state.connected ? '断开连接' : '扫描设备')
-            .fontSize(18)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(AppColors.WHITE)
-        }
-        .width('100%')
-        .height(56)
-        .justifyContent(FlexAlign.Center)
-        .backgroundColor(this.state.connected ? AppColors.ERROR : AppColors.PRIMARY)
-        .borderRadius(28)
-        .onClick(() => {
-          this.onConnectionToggle();
-        })
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 18, bottom: 94 })

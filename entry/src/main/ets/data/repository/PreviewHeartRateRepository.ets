@@ -1,9 +1,10 @@
-import { HeartRateRepository, SnapshotListener } from '../../domain/HeartRateRepository';
+import { DevicesListener, HeartRateRepository, SnapshotListener } from '../../domain/HeartRateRepository';
 import { HeartRateSnapshot, MonitoringState } from '../../domain/model/MonitoringState';
 import { HeartRateDevice } from '../../domain/port/BleHeartRatePort';
 
 export class PreviewHeartRateRepository implements HeartRateRepository {
   private listener?: SnapshotListener;
+  private devicesListener?: DevicesListener;
   private snapshot: HeartRateSnapshot = {
     state: MonitoringState.Connected,
     bpm: 90,
@@ -14,7 +15,11 @@ export class PreviewHeartRateRepository implements HeartRateRepository {
 
   async scan(): Promise<HeartRateDevice[]> {
     this.updateSnapshot(MonitoringState.Scanning, 0, '', '');
-    return [{ id: 'F8:3A:7B:21:91:04', name: 'HUAWEI Band HR', rssi: -48 }];
+    const devices: HeartRateDevice[] = [{ id: 'F8:3A:7B:21:91:04', name: 'HUAWEI Band HR', rssi: -48 }];
+    if (this.devicesListener) {
+      this.devicesListener(devices);
+    }
+    return devices;
   }
 
   async connect(device: HeartRateDevice): Promise<void> {
@@ -28,6 +33,10 @@ export class PreviewHeartRateRepository implements HeartRateRepository {
 
   observe(listener: SnapshotListener): void {
     this.listener = listener;
+  }
+
+  observeDevices(listener: DevicesListener): void {
+    this.devicesListener = listener;
   }
 
   currentSnapshot(): HeartRateSnapshot {

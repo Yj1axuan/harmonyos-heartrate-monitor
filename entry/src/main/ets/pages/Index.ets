@@ -1,5 +1,6 @@
 import { AppColors } from '../ui/theme/AppTheme';
 import { HomePage } from '../ui/pages/HomePage';
+import { DeviceListPage } from '../ui/pages/DeviceListPage';
 import { FavoritePage, HistoryPage } from '../ui/pages/HistoryPage';
 import { AboutPage, SettingsPage } from '../ui/pages/SettingsPage';
 import { AppContainer } from '../core/di/AppContainer';
@@ -19,6 +20,7 @@ struct Index {
   @State private settingsState: SettingsUiState = this.settingsViewModel.state;
   @State private selectedTab: number = 0;
   @State private showAbout: boolean = false;
+  @State private showDevices: boolean = false;
 
   @Builder
   private navItem(index: number, icon: string, title: string) {
@@ -61,7 +63,14 @@ struct Index {
 
   build() {
     Stack({ alignContent: Alignment.Bottom }) {
-      if (this.showAbout) {
+      if (this.showDevices) {
+        DeviceListPage({
+          state: this.heartRateState,
+          onBack: () => {
+            this.showDevices = false;
+          }
+        })
+      } else if (this.showAbout) {
         AboutPage({
           onBack: () => {
             this.showAbout = false;
@@ -71,7 +80,13 @@ struct Index {
         if (this.selectedTab === 0) {
           HomePage({
             state: this.heartRateState,
-            onConnectionToggle: () => {
+            onOpenDevices: () => {
+              this.showDevices = true;
+              if (!this.heartRateState.connected && !this.heartRateState.scanning) {
+                this.heartRateViewModel.toggleConnection();
+              }
+            },
+            onDisconnect: () => {
               this.heartRateViewModel.toggleConnection();
             }
           })
