@@ -7,6 +7,10 @@ export struct HomePage {
   onOpenDevices: () => void = () => {};
   onDisconnect: () => void = () => {};
 
+  private availableBluetoothCount(): number {
+    return this.state.devices.length;
+  }
+
   @Builder
   private heartRateCard() {
     Stack({ alignContent: Alignment.Center }) {
@@ -193,9 +197,17 @@ export struct HomePage {
 
         this.actionRow('⌁', this.state.connected ? '已连接设备 ' + this.state.deviceName :
           (this.state.scanning ? '正在扫描蓝牙设备' :
-            (this.state.devices.length > 0 ? '发现 ' + this.state.devices.length.toString() + ' 台蓝牙设备' : '可用设备')),
+            (this.availableBluetoothCount() > 0 ? '发现 ' + this.availableBluetoothCount().toString() + ' 台蓝牙设备' : '可用蓝牙设备')),
           AppColors.SURFACE,
           AppColors.TEXT, this.onOpenDevices)
+
+        if (this.state.statusMessage.length > 0) {
+          Text(this.state.statusMessage)
+            .fontSize(13)
+            .fontColor(this.state.failed ? AppColors.ERROR : AppColors.TEXT_MUTED)
+            .width('100%')
+            .padding({ left: 4, right: 4 })
+        }
 
         if (this.state.connected) {
           this.actionRow('⛶', '进入全屏模式', AppColors.PRIMARY_SOFT, '#344C8B', () => {})

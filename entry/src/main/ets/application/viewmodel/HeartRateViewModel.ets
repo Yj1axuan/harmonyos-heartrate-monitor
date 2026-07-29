@@ -36,13 +36,33 @@ export class HeartRateViewModel {
         await this.toggleHeartRateConnection.execute(this.state.monitoringState);
       if (!this.state.connected) {
         this.state.devices = devices;
-        if (devices.length === 0) {
-          this.state.statusMessage = '未发现 BLE 设备，请确认设备已开启广播后重试';
+        if (this.state.devices.length === 0) {
+          this.state.statusMessage = '未发现蓝牙设备，请确认设备已开启广播或处于配对模式后重试';
         }
       }
     } catch (_error) {
       this.state.monitoringState = MonitoringState.Failed;
       this.state.statusMessage = '扫描失败，请检查蓝牙权限和系统蓝牙开关';
+    }
+  }
+
+  async connectDevice(device: HeartRateDevice): Promise<void> {
+    if (this.state.scanning) {
+      return;
+    }
+    if (this.state.connected && this.state.deviceId === device.id) {
+      this.state.statusMessage = '已连接：' + device.name;
+      return;
+    }
+    this.state.statusMessage = '正在连接：' + device.name;
+    try {
+      await this.toggleHeartRateConnection.connect(device);
+      this.state.statusMessage = '连接成功：' + device.name;
+    } catch (error) {
+      this.state.monitoringState = MonitoringState.Failed;
+      const reason = error instanceof Error ? error.message : String(error);
+      this.state.statusMessage = reason.length > 0 ?
+        '连接失败：' + device.name + '（' + reason + '）' : '连接失败：' + device.name;
     }
   }
 
@@ -54,7 +74,7 @@ export class HeartRateViewModel {
     try {
       const devices = await this.toggleHeartRateConnection.loadKnownDevices();
       if (devices.length > 0) {
-        this.state.devices = devices;
+        this.state.devices = this.mergeDevices(this.state.devices, devices);
         return;
       }
       if (this.state.devices.length === 0) {
@@ -96,8 +116,8 @@ export class HeartRateViewModel {
     try {
       const devices = await this.toggleHeartRateConnection.refreshDeviceDiscovery();
       this.state.devices = devices;
-      if (devices.length === 0) {
-        this.state.statusMessage = '未发现可用设备，请确认设备已开启并处于可发现状态';
+      if (this.state.devices.length === 0) {
+        this.state.statusMessage = '未发现蓝牙设备，请确认设备已开启并处于可发现状态';
       }
     } catch (_error) {
       this.state.monitoringState = MonitoringState.Failed;
@@ -111,5 +131,23 @@ export class HeartRateViewModel {
     this.state.deviceId = snapshot.deviceId;
     this.state.deviceName = snapshot.deviceName;
     this.state.updatedAt = snapshot.updatedAt;
+  }
+
+  private mergeDevices(currentDevices: HeartRateDevice[], nextDevices: HeartRateDevice[]): HeartRateDevice[] {
+    const mergedDevices: HeartRateDevice[] = currentDevices.slice();
+    nextDevices.forEach((device: HeartRateDevice) => {
+      const index = mergedDevices.findIndex((item: HeartRateDevice) => item.id === device.id);
+      if (index >= 0) {
+        mergedDevices[index] = {
+          id: device.id,
+          name: device.name.length > 0 ? device.name : mergedDevices[index].name,
+          rssi: device.rssi,
+          deviceKind: device.deviceKind
+        };
+        return;
+      }
+      mergedDevices.push(device);
+    });
+    return mergedDevices;
   }
 }

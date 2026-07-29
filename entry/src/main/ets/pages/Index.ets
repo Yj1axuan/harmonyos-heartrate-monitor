@@ -9,6 +9,7 @@ import { SettingsUiState } from '../application/state/SettingsUiState';
 import { HeartRateViewModel } from '../application/viewmodel/HeartRateViewModel';
 import { HistoryViewModel } from '../application/viewmodel/HistoryViewModel';
 import { SettingsViewModel } from '../application/viewmodel/SettingsViewModel';
+import { HeartRateDevice } from '../domain/port/BleHeartRatePort';
 
 @Entry
 @Component
@@ -21,6 +22,13 @@ struct Index {
   @State private selectedTab: number = 0;
   @State private showAbout: boolean = false;
   @State private showDevices: boolean = false;
+
+  private async connectSelectedDevice(device: HeartRateDevice): Promise<void> {
+    await this.heartRateViewModel.connectDevice(device);
+    if (this.heartRateState.connected && this.heartRateState.deviceId === device.id) {
+      this.showDevices = false;
+    }
+  }
 
   @Builder
   private navItem(index: number, icon: string, title: string) {
@@ -72,6 +80,9 @@ struct Index {
           },
           onRefresh: () => {
             this.heartRateViewModel.refreshDeviceDiscovery();
+          },
+          onSelect: (device: HeartRateDevice) => {
+            void this.connectSelectedDevice(device);
           }
         })
       } else if (this.showAbout) {
@@ -86,7 +97,9 @@ struct Index {
             state: this.heartRateState,
             onOpenDevices: () => {
               this.showDevices = true;
-              this.heartRateViewModel.loadKnownDevices();
+              if (this.heartRateState.devices.length === 0) {
+                this.heartRateViewModel.loadKnownDevices();
+              }
             },
             onDisconnect: () => {
               this.heartRateViewModel.toggleConnection();

@@ -9,6 +9,9 @@ import {
 } from '../../domain/port/BleHeartRatePort';
 
 export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
+  private static readonly CONNECTION_TIMEOUT_MS: number = 12000;
+  private static readonly HEART_RATE_SERVICE_UUID: string = '180d';
+  private static readonly HEART_RATE_MEASUREMENT_UUID: string = '2a37';
   private static readonly MAJOR_COMPUTER: number = 0x0100;
   private static readonly MAJOR_PHONE: number = 0x0200;
   private static readonly MAJOR_WEARABLE: number = 0x0700;
@@ -17,6 +20,10 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
   private deviceListener: DeviceListener = (_devices: HeartRateDevice[]) => {};
   private scanning: boolean = false;
   private classicScanning: boolean = false;
+  private activeGattClient: ble.GattClientDevice | undefined = undefined;
+  private activeConnectionResolver: ((result: boolean) => void) | undefined = undefined;
+  private activeConnectionRejecter: ((error: Error) => void) | undefined = undefined;
+  private activeConnectionDeviceId: string = '';
   private deviceNames: Map<string, string> = new Map<string, string>();
   private resolvingDeviceNames: Set<string> = new Set<string>();
 
@@ -123,17 +130,102 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
     this.scanning = false;
   }
 
-  async connect(_deviceId: string): Promise<void> {
-    throw new Error('BLE GATT connection is not implemented yet');
+  async connect(deviceId: string): Promise<void> {
+    await this.stopActiveGattClient();
+    const client = ble.createGattClientDevice(deviceId);
+    this.activeGattClient = client;
+    this.activeConnectionDeviceId = deviceId;
+
+    await new Promise<void>((resolve: () => void, reject: (error: Error) => void) => {
+      const timeoutId = setTimeout(() => {
+        void this.stopActiveGattClient();
+        reject(new Error('BLE connection timeout'));
+      }, HarmonyBleHeartRateAdapter.CONNECTION_TIMEOUT_MS);
+      this.activeConnectionResolver = (result: boolean) => {
+        clearTimeout(timeoutId);
+        this.activeConnectionResolver = undefined;
+        this.activeConnectionRejecter = undefined;
+        if (result) {
+          resolve();
+          return;
+        }
+        reject(new Error('BLE connection failed'));
+      };
+      this.activeConnectionRejecter = (error: Error) => {
+        clearTimeout(timeoutId);
+        this.activeConnectionResolver = undefined;
+        this.activeConnectionRejecter = undefined;
+        reject(error);
+      };
+
+      try {
+        client.on('BLEConnectionStateChange', this.connectionStateCallback);
+        client.connect();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        this.cleanupActiveGattClient();
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    });
+
+    const isStandardHeartRateDevice = await this.hasStandardHeartRateProfile(client);
+    if (!isStandardHeartRateDevice) {
+      await this.stopActiveGattClient();
+      throw new Error('设备不支持标准心率服务');
+    }
   }
 
   async disconnect(): Promise<void> {
+    await this.stopActiveGattClient();
     await this.stopScan();
   }
 
   setMeasurementListener(_listener: MeasurementListener): void {}
 
   setDisconnectListener(_listener: DisconnectListener): void {}
+
+  private connectionStateCallback = (state: ble.BLEConnectionChangeState): void => {
+    if (this.activeConnectionDeviceId.length > 0 && state.deviceId !== this.activeConnectionDeviceId) {
+      return;
+    }
+    if (state.state === 2) {
+      if (this.activeConnectionResolver) {
+        this.activeConnectionResolver(true);
+      }
+      return;
+    }
+    if (state.state === 0 || state.state === 3) {
+      if (this.activeConnectionRejecter) {
+        this.activeConnectionRejecter(new Error('BLE connection failed'));
+      }
+    }
+  };
+
+  private async stopActiveGattClient(): Promise<void> {
+    if (this.activeGattClient === undefined) {
+      return;
+    }
+    try {
+      this.activeGattClient.off('BLEConnectionStateChange', this.connectionStateCallback);
+    } catch (_error) {
+    }
+    try {
+      this.activeGattClient.disconnect();
+    } catch (_error) {
+    }
+    try {
+      this.activeGattClient.close();
+    } catch (_error) {
+    }
+    this.cleanupActiveGattClient();
+  }
+
+  private cleanupActiveGattClient(): void {
+    this.activeGattClient = undefined;
+    this.activeConnectionDeviceId = '';
+    this.activeConnectionResolver = undefined;
+    this.activeConnectionRejecter = undefined;
+  }
 
   private startClassicDiscovery(): void {
     try {
@@ -584,5 +676,49 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
   private deviceSuffix(deviceId: string): string {
     const suffixStart = Math.max(0, deviceId.length - 5);
     return deviceId.substring(suffixStart);
+  }
+
+  private async hasStandardHeartRateProfile(client: ble.GattClientDevice): Promise<boolean> {
+    try {
+      const services = await client.getServices();
+      return this.hasHeartRateProfile(services);
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  private hasHeartRateProfile(services: Array<ble.GattService>): boolean {
+    for (let index = 0; index < services.length; index++) {
+      const service = services[index];
+      if (this.isHeartRateService(service.serviceUuid) && this.hasHeartRateMeasurementCharacteristic(service)) {
+        return true;
+      }
+      if (service.includeServices !== undefined && this.hasHeartRateProfile(service.includeServices)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private hasHeartRateMeasurementCharacteristic(service: ble.GattService): boolean {
+    for (let index = 0; index < service.characteristics.length; index++) {
+      const characteristic = service.characteristics[index];
+      if (this.isHeartRateCharacteristic(characteristic.characteristicUuid)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private isHeartRateService(uuid: string): boolean {
+    return this.normalizeUuid(uuid).endsWith(HarmonyBleHeartRateAdapter.HEART_RATE_SERVICE_UUID);
+  }
+
+  private isHeartRateCharacteristic(uuid: string): boolean {
+    return this.normalizeUuid(uuid).endsWith(HarmonyBleHeartRateAdapter.HEART_RATE_MEASUREMENT_UUID);
+  }
+
+  private normalizeUuid(uuid: string): string {
+    return this.cleanDeviceName(uuid).toLowerCase().split('-').join('');
   }
 }

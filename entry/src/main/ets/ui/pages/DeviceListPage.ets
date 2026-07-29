@@ -9,10 +9,10 @@ export struct DeviceListPage {
   @State private searchQuery: string = '';
   onBack: () => void = () => {};
   onRefresh: () => void = () => {};
+  onSelect: (device: HeartRateDevice) => void = (_device: HeartRateDevice) => {};
 
   private visibleDevices(): HeartRateDevice[] {
-    const devices = this.state.devices.filter((device: HeartRateDevice) =>
-      !device.name.startsWith('BLE '));
+    const devices = this.state.devices;
     const query = this.searchQuery.trim().toLowerCase();
     if (query.length === 0) {
       return devices;
@@ -32,6 +32,10 @@ export struct DeviceListPage {
       return '已配对';
     }
     return device.rssi.toString() + ' dBm';
+  }
+
+  private displayDeviceName(device: HeartRateDevice): string {
+    return device.name;
   }
 
   private deviceIcon(device: HeartRateDevice): string {
@@ -66,7 +70,7 @@ export struct DeviceListPage {
         .backgroundColor(AppColors.PRIMARY_SOFT)
         .borderRadius(21)
 
-      Text(device.name)
+      Text(this.displayDeviceName(device))
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
         .fontColor(AppColors.TEXT)
@@ -81,6 +85,9 @@ export struct DeviceListPage {
     .width('100%')
     .height(68)
     .padding({ left: 14, right: 16 })
+    .onClick(() => {
+      this.onSelect(device);
+    })
   }
 
   build() {
@@ -93,7 +100,7 @@ export struct DeviceListPage {
           .height(44)
           .textAlign(TextAlign.Center)
           .onClick(this.onBack)
-        Text('可用设备')
+        Text('可用蓝牙设备')
           .fontSize(22)
           .fontWeight(FontWeight.Bold)
           .fontColor(AppColors.TEXT)
@@ -185,7 +192,7 @@ export struct DeviceListPage {
         .scrollBar(BarState.Off)
       } else {
         Column({ space: 12 }) {
-          if (this.searchQuery.trim().length > 0 && this.state.devices.length > 0) {
+          if (this.searchQuery.trim().length > 0 && this.visibleDevices().length === 0 && this.state.devices.length > 0) {
             Text('未找到匹配设备')
               .fontSize(17)
               .fontWeight(FontWeight.Medium)
@@ -197,12 +204,20 @@ export struct DeviceListPage {
             Text('正在查找设备...')
               .fontSize(16)
               .fontColor(AppColors.TEXT_MUTED)
-          } else {
-            Text('未发现可用设备')
+          } else if (this.state.devices.length > 0 && this.visibleDevices().length === 0) {
+            Text('暂无可连接蓝牙设备')
               .fontSize(17)
               .fontWeight(FontWeight.Medium)
               .fontColor(AppColors.TEXT)
-            Text('请确认设备已开启并处于广播状态')
+            Text('当前发现的设备暂时无法连接')
+              .fontSize(14)
+              .fontColor(AppColors.TEXT_MUTED)
+          } else {
+            Text('未发现可用蓝牙设备')
+              .fontSize(17)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(AppColors.TEXT)
+            Text('请确认设备已开启并处于广播或配对状态')
               .fontSize(14)
               .fontColor(AppColors.TEXT_MUTED)
           }

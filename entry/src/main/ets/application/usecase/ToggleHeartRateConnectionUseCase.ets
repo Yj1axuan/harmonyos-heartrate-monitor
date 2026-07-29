@@ -19,6 +19,10 @@ export class ToggleHeartRateConnectionUseCase {
     return await this.repository.scan();
   }
 
+  async connect(device: HeartRateDevice): Promise<void> {
+    await this.repository.connect(device);
+  }
+
   async loadKnownDevices(): Promise<HeartRateDevice[]> {
     return await this.repository.loadKnownDevices();
   }

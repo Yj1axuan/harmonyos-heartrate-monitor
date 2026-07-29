@@ -14,7 +14,7 @@ export class PreviewHeartRateRepository implements HeartRateRepository {
   };
 
   async loadKnownDevices(): Promise<HeartRateDevice[]> {
-    const devices: HeartRateDevice[] = [{ id: 'F8:3A:7B:21:91:04', name: 'HUAWEI Band HR', rssi: -48, deviceKind: 'watch' }];
+    const devices: HeartRateDevice[] = [{ id: 'F8:3A:7B:21:91:04', name: 'HUAWEI Band HR', rssi: -48, deviceKind: 'ble' }];
     if (this.devicesListener) {
       this.devicesListener(devices);
     }
@@ -23,7 +23,7 @@ export class PreviewHeartRateRepository implements HeartRateRepository {
 
   async scan(): Promise<HeartRateDevice[]> {
     this.updateSnapshot(MonitoringState.Scanning, 0, '', '');
-    const devices: HeartRateDevice[] = [{ id: 'F8:3A:7B:21:91:04', name: 'HUAWEI Band HR', rssi: -48 }];
+    const devices: HeartRateDevice[] = [{ id: 'F8:3A:7B:21:91:04', name: 'HUAWEI Band HR', rssi: -48, deviceKind: 'ble' }];
     if (this.devicesListener) {
       this.devicesListener(devices);
     }
@@ -31,7 +31,7 @@ export class PreviewHeartRateRepository implements HeartRateRepository {
   }
 
   async startDeviceDiscovery(): Promise<void> {
-    const devices: HeartRateDevice[] = [{ id: 'F8:3A:7B:21:91:04', name: 'HUAWEI Band HR', rssi: -48 }];
+    const devices: HeartRateDevice[] = [{ id: 'F8:3A:7B:21:91:04', name: 'HUAWEI Band HR', rssi: -48, deviceKind: 'ble' }];
     this.updateSnapshot(MonitoringState.Scanning, 0, '', '');
     if (this.devicesListener) {
       this.devicesListener(devices);

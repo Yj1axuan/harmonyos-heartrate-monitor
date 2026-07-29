@@ -87,7 +87,13 @@ export class HarmonyHeartRateRepository implements HeartRateRepository {
 
   async connect(device: HeartRateDevice): Promise<void> {
     this.updateSnapshot(MonitoringState.Connecting, 0, device.id, device.name);
-    await this.blePort.connect(device.id);
+    try {
+      await this.blePort.connect(device.id);
+      this.updateSnapshot(MonitoringState.Connected, 0, device.id, device.name);
+    } catch (error) {
+      this.updateSnapshot(MonitoringState.Failed, 0, '', '');
+      throw error instanceof Error ? error : new Error(String(error));
+    }
   }
 
   async disconnect(): Promise<void> {
