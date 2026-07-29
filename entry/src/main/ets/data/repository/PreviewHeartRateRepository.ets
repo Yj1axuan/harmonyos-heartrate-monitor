@@ -13,6 +13,14 @@ export class PreviewHeartRateRepository implements HeartRateRepository {
     updatedAt: Date.now()
   };
 
+  async loadKnownDevices(): Promise<HeartRateDevice[]> {
+    const devices: HeartRateDevice[] = [{ id: 'F8:3A:7B:21:91:04', name: 'HUAWEI Band HR', rssi: -48, deviceKind: 'watch' }];
+    if (this.devicesListener) {
+      this.devicesListener(devices);
+    }
+    return devices;
+  }
+
   async scan(): Promise<HeartRateDevice[]> {
     this.updateSnapshot(MonitoringState.Scanning, 0, '', '');
     const devices: HeartRateDevice[] = [{ id: 'F8:3A:7B:21:91:04', name: 'HUAWEI Band HR', rssi: -48 }];
@@ -20,6 +28,18 @@ export class PreviewHeartRateRepository implements HeartRateRepository {
       this.devicesListener(devices);
     }
     return devices;
+  }
+
+  async startDeviceDiscovery(): Promise<void> {
+    const devices: HeartRateDevice[] = [{ id: 'F8:3A:7B:21:91:04', name: 'HUAWEI Band HR', rssi: -48 }];
+    this.updateSnapshot(MonitoringState.Scanning, 0, '', '');
+    if (this.devicesListener) {
+      this.devicesListener(devices);
+    }
+  }
+
+  async stopDeviceDiscovery(): Promise<void> {
+    this.updateSnapshot(MonitoringState.Idle, 0, '', '');
   }
 
   async connect(device: HeartRateDevice): Promise<void> {

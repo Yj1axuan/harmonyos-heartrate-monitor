@@ -3,13 +3,14 @@ import { HeartRateSnapshot, MonitoringState } from '../../domain/model/Monitorin
 import { BleHeartRatePort, HeartRateDevice } from '../../domain/port/BleHeartRatePort';
 import { BluetoothPermissionPort } from '../../domain/port/BluetoothPermissionPort';
 
-const SCAN_DURATION_MS = 6000;
+const SCAN_DURATION_MS = 8000;
 
 export class HarmonyHeartRateRepository implements HeartRateRepository {
   private blePort: BleHeartRatePort;
   private permissionPort: BluetoothPermissionPort;
   private listener: SnapshotListener = (_snapshot: HeartRateSnapshot) => {};
   private devicesListener: DevicesListener = (_devices: HeartRateDevice[]) => {};
+  private discoveredDevices: HeartRateDevice[] = [];
   private snapshot: HeartRateSnapshot = {
     state: MonitoringState.Idle,
     bpm: 0,
@@ -23,6 +24,18 @@ export class HarmonyHeartRateRepository implements HeartRateRepository {
     this.permissionPort = permissionPort;
   }
 
+  async loadKnownDevices(): Promise<HeartRateDevice[]> {
+    const granted = await this.permissionPort.ensureGranted();
+    if (!granted) {
+      this.updateSnapshot(MonitoringState.Failed, 0, '', '');
+      throw new Error('Bluetooth permission denied');
+    }
+
+    this.discoveredDevices = await this.blePort.getKnownDevices();
+    this.devicesListener(this.discoveredDevices);
+    return this.discoveredDevices;
+  }
+
   async scan(): Promise<HeartRateDevice[]> {
     const granted = await this.permissionPort.ensureGranted();
     if (!granted) {
@@ -31,14 +44,14 @@ export class HarmonyHeartRateRepository implements HeartRateRepository {
     }
 
     this.updateSnapshot(MonitoringState.Scanning, 0, '', '');
-    let discoveredDevices: HeartRateDevice[] = [];
+    this.discoveredDevices = [];
     try {
       await this.blePort.startScan((devices: HeartRateDevice[]) => {
-        discoveredDevices = devices;
+        this.discoveredDevices = devices;
         this.devicesListener(devices);
       });
       await this.waitForScanWindow();
-      return discoveredDevices;
+      return this.discoveredDevices;
     } catch (error) {
       this.updateSnapshot(MonitoringState.Failed, 0, '', '');
       throw error instanceof Error ? error : new Error(String(error));
@@ -47,6 +60,28 @@ export class HarmonyHeartRateRepository implements HeartRateRepository {
       if (this.snapshot.state === MonitoringState.Scanning) {
         this.updateSnapshot(MonitoringState.Idle, 0, '', '');
       }
+    }
+  }
+
+  async startDeviceDiscovery(): Promise<void> {
+    const granted = await this.permissionPort.ensureGranted();
+    if (!granted) {
+      this.updateSnapshot(MonitoringState.Failed, 0, '', '');
+      throw new Error('Bluetooth permission denied');
+    }
+
+    this.discoveredDevices = [];
+    this.updateSnapshot(MonitoringState.Scanning, 0, '', '');
+    await this.blePort.startScan((devices: HeartRateDevice[]) => {
+      this.discoveredDevices = devices;
+      this.devicesListener(devices);
+    });
+  }
+
+  async stopDeviceDiscovery(): Promise<void> {
+    await this.blePort.stopScan();
+    if (this.snapshot.state === MonitoringState.Scanning) {
+      this.updateSnapshot(MonitoringState.Idle, 0, '', '');
     }
   }
 

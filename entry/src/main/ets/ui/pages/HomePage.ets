@@ -192,8 +192,8 @@ export struct HomePage {
         this.realtimeChart()
 
         this.actionRow('⌁', this.state.connected ? '已连接设备 ' + this.state.deviceName :
-          (this.state.scanning ? '正在扫描心率设备' :
-            (this.state.devices.length > 0 ? '发现 ' + this.state.devices.length.toString() + ' 台心率设备' : '可用设备')),
+          (this.state.scanning ? '正在扫描蓝牙设备' :
+            (this.state.devices.length > 0 ? '发现 ' + this.state.devices.length.toString() + ' 台蓝牙设备' : '可用设备')),
           AppColors.SURFACE,
           AppColors.TEXT, this.onOpenDevices)
 

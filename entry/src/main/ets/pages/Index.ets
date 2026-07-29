@@ -67,7 +67,11 @@ struct Index {
         DeviceListPage({
           state: this.heartRateState,
           onBack: () => {
+            this.heartRateViewModel.stopDeviceDiscovery();
             this.showDevices = false;
+          },
+          onRefresh: () => {
+            this.heartRateViewModel.refreshDeviceDiscovery();
           }
         })
       } else if (this.showAbout) {
@@ -82,9 +86,7 @@ struct Index {
             state: this.heartRateState,
             onOpenDevices: () => {
               this.showDevices = true;
-              if (!this.heartRateState.connected && !this.heartRateState.scanning) {
-                this.heartRateViewModel.toggleConnection();
-              }
+              this.heartRateViewModel.loadKnownDevices();
             },
             onDisconnect: () => {
               this.heartRateViewModel.toggleConnection();

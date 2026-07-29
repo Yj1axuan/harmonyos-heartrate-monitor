@@ -8,20 +8,55 @@ export struct DeviceListPage {
   @State private searchVisible: boolean = false;
   @State private searchQuery: string = '';
   onBack: () => void = () => {};
+  onRefresh: () => void = () => {};
 
   private visibleDevices(): HeartRateDevice[] {
+    const devices = this.state.devices.filter((device: HeartRateDevice) =>
+      !device.name.startsWith('BLE '));
     const query = this.searchQuery.trim().toLowerCase();
     if (query.length === 0) {
-      return this.state.devices;
+      return devices;
     }
-    return this.state.devices.filter((device: HeartRateDevice) =>
+    return devices.filter((device: HeartRateDevice) =>
       device.name.toLowerCase().includes(query));
+  }
+
+  private deviceStatus(device: HeartRateDevice): string {
+    if (this.state.connected && this.state.deviceId === device.id) {
+      return '已连接';
+    }
+    if (device.rssi === -126) {
+      return '已发现';
+    }
+    if (device.rssi <= -127) {
+      return '已配对';
+    }
+    return device.rssi.toString() + ' dBm';
+  }
+
+  private deviceIcon(device: HeartRateDevice): string {
+    if (device.deviceKind === 'phone') {
+      return '📱';
+    }
+    if (device.deviceKind === 'tablet') {
+      return '▭';
+    }
+    if (device.deviceKind === 'watch') {
+      return '⌚';
+    }
+    if (device.name.startsWith('手机设备 ') || device.name.startsWith('平板设备 ')) {
+      return device.name.startsWith('手机设备 ') ? '📱' : '▭';
+    }
+    if (device.name.startsWith('运动手表 ')) {
+      return '⌚';
+    }
+    return '⌁';
   }
 
   @Builder
   private deviceRow(device: HeartRateDevice) {
     Row({ space: 12 }) {
-      Text('B')
+      Text(this.deviceIcon(device))
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
         .fontColor(AppColors.PRIMARY)
@@ -39,7 +74,7 @@ export struct DeviceListPage {
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
 
-      Text(device.rssi <= -127 ? '已连接' : device.rssi.toString() + ' dBm')
+      Text(this.deviceStatus(device))
         .fontSize(12)
         .fontColor(AppColors.TEXT_MUTED)
     }
@@ -50,7 +85,7 @@ export struct DeviceListPage {
 
   build() {
     Column() {
-      Row({ space: 12 }) {
+      Row({ space: 8 }) {
         Text('‹')
           .fontSize(32)
           .fontColor(AppColors.TEXT)
@@ -59,7 +94,7 @@ export struct DeviceListPage {
           .textAlign(TextAlign.Center)
           .onClick(this.onBack)
         Text('可用设备')
-          .fontSize(24)
+          .fontSize(22)
           .fontWeight(FontWeight.Bold)
           .fontColor(AppColors.TEXT)
         Blank()
@@ -69,13 +104,37 @@ export struct DeviceListPage {
             .height(24)
             .color(AppColors.PRIMARY)
         }
-        Button({ type: ButtonType.Circle }) {
-          Text(this.searchVisible ? '×' : '⌕')
-            .fontSize(22)
-            .fontColor(AppColors.WHITE)
+        Button({ type: ButtonType.Capsule }) {
+          Row({ space: 4 }) {
+            Text('⟳')
+              .fontSize(17)
+              .fontColor(AppColors.WHITE)
+            Text(this.state.scanning ? '刷新中' : '刷新')
+              .fontSize(13)
+              .fontColor(AppColors.WHITE)
+          }
+          .justifyContent(FlexAlign.Center)
+          .width('100%')
         }
-        .width(42)
-        .height(42)
+        .width(this.state.scanning ? 82 : 68)
+        .height(38)
+        .backgroundColor(this.state.scanning ? AppColors.TEXT_MUTED : AppColors.PRIMARY)
+        .enabled(!this.state.scanning)
+        .onClick(this.onRefresh)
+        Button({ type: ButtonType.Capsule }) {
+          Row({ space: 4 }) {
+            Text(this.searchVisible ? '×' : '⌕')
+              .fontSize(this.searchVisible ? 18 : 16)
+              .fontColor(AppColors.WHITE)
+            Text(this.searchVisible ? '关闭' : '搜索')
+              .fontSize(13)
+              .fontColor(AppColors.WHITE)
+          }
+          .justifyContent(FlexAlign.Center)
+          .width('100%')
+        }
+        .width(68)
+        .height(38)
         .backgroundColor(AppColors.PRIMARY)
         .onClick(() => {
           this.searchVisible = !this.searchVisible;
@@ -102,7 +161,7 @@ export struct DeviceListPage {
           })
       }
 
-      Text(this.state.scanning ? '正在扫描附近的蓝牙设备' : '附近的设备')
+      Text(this.state.scanning ? '正在刷新附近的蓝牙设备' : '点击刷新获取附近设备')
         .fontSize(14)
         .fontColor(AppColors.TEXT_MUTED)
         .width('100%')
