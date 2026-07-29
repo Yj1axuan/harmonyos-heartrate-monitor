@@ -6,6 +6,14 @@ export interface SessionPreview {
   path: string;
 }
 
+export interface HistoryDetail {
+  sessionId: number;
+  device: string;
+  time: string;
+  stats: string;
+  records: string[];
+}
+
 export interface FavoriteDevice {
   id: string;
   name: string;

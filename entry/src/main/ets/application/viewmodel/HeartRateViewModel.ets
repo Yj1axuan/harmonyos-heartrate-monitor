@@ -6,6 +6,7 @@ import { MonitoringState } from '../../domain/model/MonitoringState';
 import { HeartRateDevice } from '../../domain/port/BleHeartRatePort';
 
 export class HeartRateViewModel {
+  private static readonly MAX_SAMPLE_COUNT: number = 60;
   readonly state: HeartRateUiState = new HeartRateUiState();
   private observeHeartRate: ObserveHeartRateUseCase;
   private toggleHeartRateConnection: ToggleHeartRateConnectionUseCase;
@@ -131,6 +132,36 @@ export class HeartRateViewModel {
     this.state.deviceId = snapshot.deviceId;
     this.state.deviceName = snapshot.deviceName;
     this.state.updatedAt = snapshot.updatedAt;
+    if (snapshot.state !== MonitoringState.Connected) {
+      this.resetMeasurements();
+      return;
+    }
+    if (snapshot.bpm > 0) {
+      this.recordMeasurement(snapshot.bpm, snapshot.updatedAt);
+    }
+  }
+
+  private recordMeasurement(bpm: number, updatedAt: number): void {
+    if (this.state.minBpm === 0 || bpm < this.state.minBpm) {
+      this.state.minBpm = bpm;
+    }
+    if (bpm > this.state.maxBpm) {
+      this.state.maxBpm = bpm;
+    }
+    const samples = this.state.samples.slice();
+    samples.push(bpm);
+    if (samples.length > HeartRateViewModel.MAX_SAMPLE_COUNT) {
+      samples.shift();
+    }
+    this.state.samples = samples;
+    this.state.lastMeasurementAt = updatedAt;
+  }
+
+  private resetMeasurements(): void {
+    this.state.minBpm = 0;
+    this.state.maxBpm = 0;
+    this.state.samples = [];
+    this.state.lastMeasurementAt = 0;
   }
 
   private mergeDevices(currentDevices: HeartRateDevice[], nextDevices: HeartRateDevice[]): HeartRateDevice[] {

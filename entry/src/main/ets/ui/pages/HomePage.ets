@@ -11,6 +11,27 @@ export struct HomePage {
     return this.state.devices.length;
   }
 
+  private chartPath(): string {
+    const samples = this.state.samples;
+    if (!this.state.connected || samples.length === 0) {
+      return '';
+    }
+    const minBpm = this.state.minBpm > 0 ? this.state.minBpm : 60;
+    const maxBpm = this.state.maxBpm > minBpm ? this.state.maxBpm : minBpm + 20;
+    const range = Math.max(1, maxBpm - minBpm);
+    const width = 268;
+    const height = 96;
+    const left = 42;
+    const top = 42;
+    let path = '';
+    samples.forEach((bpm: number, index: number) => {
+      const x = samples.length === 1 ? left : left + Math.floor((width * index) / (samples.length - 1));
+      const y = top + height - Math.floor(((bpm - minBpm) * height) / range);
+      path += (index === 0 ? 'M ' : ' L ') + x.toString() + ' ' + y.toString();
+    });
+    return path;
+  }
+
   @Builder
   private heartRateCard() {
     Stack({ alignContent: Alignment.Center }) {
@@ -31,11 +52,11 @@ export struct HomePage {
           .margin({ bottom: 16 })
       }
 
-      Text(this.state.connected ? 'MAX 90' : 'MAX --')
+      Text(this.state.connected && this.state.maxBpm > 0 ? 'MAX ' + this.state.maxBpm.toString() : 'MAX --')
         .fontSize(15)
         .fontColor(AppColors.TEXT_MUTED)
         .position({ right: 14, top: 14 })
-      Text(this.state.connected ? 'MIN 79' : 'MIN --')
+      Text(this.state.connected && this.state.minBpm > 0 ? 'MIN ' + this.state.minBpm.toString() : 'MIN --')
         .fontSize(15)
         .fontColor(AppColors.TEXT_MUTED)
         .position({ right: 14, bottom: 14 })
@@ -112,16 +133,16 @@ export struct HomePage {
       .padding({ left: 8, top: 5 })
 
       Path()
-        .commands('M 42 112 L 72 118 L 102 110 L 140 114 L 178 120 L 214 111 L 247 101 L 274 78 L 310 62')
+        .commands(this.chartPath())
         .fill(Color.Transparent)
-        .stroke(this.state.connected ? '#E43D3D' : '#A8ABB2')
+        .stroke(this.state.connected && this.state.samples.length > 0 ? '#E43D3D' : '#A8ABB2')
         .strokeWidth(4)
         .width('100%')
         .height(158)
 
-      Text(this.state.connected ? 'Max 90' : '等待数据')
+      Text(this.state.connected && this.state.maxBpm > 0 ? 'Max ' + this.state.maxBpm.toString() : '等待数据')
         .fontSize(12)
-        .fontColor(this.state.connected ? '#E43D3D' : AppColors.TEXT_MUTED)
+        .fontColor(this.state.connected && this.state.maxBpm > 0 ? '#E43D3D' : AppColors.TEXT_MUTED)
         .position({ left: 48, top: 39 })
     }
     .width('100%')

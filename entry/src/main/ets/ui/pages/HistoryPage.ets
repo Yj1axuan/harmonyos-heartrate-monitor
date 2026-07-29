@@ -1,10 +1,15 @@
 import { AppColors } from '../theme/AppTheme';
-import { FavoriteDevice, HistorySummary, SessionPreview } from '../../application/model/HistoryUiModels';
+import { FavoriteDevice, HistoryDetail, HistorySummary, SessionPreview } from '../../application/model/HistoryUiModels';
 
 @Component
 export struct HistoryPage {
   @Prop summary: HistorySummary = { sessionCount: 0, monitoringMinutes: 0, averageBpm: 0 };
   @Prop sessions: SessionPreview[] = [];
+  @Prop detail: HistoryDetail | undefined = undefined;
+  onRefresh: () => void = () => {};
+  onOpenDetail: (sessionId: number) => void = (_sessionId: number) => {};
+  onCloseDetail: () => void = () => {};
+  onDeleteSession: (sessionId: number) => void = (_sessionId: number) => {};
 
   @Builder
   private sessionCard(session: SessionPreview) {
@@ -50,9 +55,21 @@ export struct HistoryPage {
     .padding({ left: 16, right: 14 })
     .backgroundColor(AppColors.SURFACE)
     .borderRadius(28)
+    .onClick(() => {
+      this.onOpenDetail(session.id);
+    })
   }
 
   build() {
+    if (this.detail !== undefined) {
+      this.detailPage(this.detail)
+    } else {
+      this.listPage()
+    }
+  }
+
+  @Builder
+  private listPage() {
     Scroll() {
       Column({ space: 12 }) {
         Row() {
@@ -69,6 +86,7 @@ export struct HistoryPage {
             .textAlign(TextAlign.Center)
             .backgroundColor(AppColors.SURFACE)
             .borderRadius(21)
+            .onClick(this.onRefresh)
         }
         .width('100%')
         .margin({ bottom: 6 })
@@ -110,9 +128,24 @@ export struct HistoryPage {
         .backgroundColor(AppColors.SURFACE)
         .borderRadius(28)
 
-        ForEach(this.sessions, (session: SessionPreview) => {
-          this.sessionCard(session)
-        }, (session: SessionPreview) => session.id.toString())
+        if (this.sessions.length > 0) {
+          ForEach(this.sessions, (session: SessionPreview) => {
+            this.sessionCard(session)
+          }, (session: SessionPreview) => session.id.toString())
+        } else {
+          Column({ space: 8 }) {
+            Text('暂无历史记录')
+              .fontSize(17)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(AppColors.TEXT)
+            Text('连接心率设备并收到数据后会自动保存')
+              .fontSize(14)
+              .fontColor(AppColors.TEXT_MUTED)
+          }
+          .width('100%')
+          .height(180)
+          .justifyContent(FlexAlign.Center)
+        }
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 18, bottom: 94 })
@@ -123,11 +156,85 @@ export struct HistoryPage {
     .edgeEffect(EdgeEffect.Spring)
     .backgroundColor(AppColors.BACKGROUND)
   }
+
+  @Builder
+  private detailPage(detail: HistoryDetail) {
+    Column({ space: 12 }) {
+      Row({ space: 8 }) {
+        Text('‹')
+          .fontSize(32)
+          .fontColor(AppColors.TEXT)
+          .width(44)
+          .height(44)
+          .textAlign(TextAlign.Center)
+          .onClick(this.onCloseDetail)
+        Text('历史详情')
+          .fontSize(24)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(AppColors.TEXT)
+        Blank()
+        Text('删除')
+          .fontSize(14)
+          .fontColor(AppColors.ERROR)
+          .width(58)
+          .height(36)
+          .textAlign(TextAlign.Center)
+          .backgroundColor(AppColors.SURFACE)
+          .borderRadius(18)
+          .onClick(() => {
+            this.onDeleteSession(detail.sessionId);
+          })
+      }
+      .width('100%')
+
+      Column({ space: 8 }) {
+        Text(detail.device)
+          .fontSize(20)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(AppColors.TEXT)
+          .width('100%')
+        Text(detail.time)
+          .fontSize(14)
+          .fontColor(AppColors.TEXT_MUTED)
+          .width('100%')
+        Text(detail.stats)
+          .fontSize(13)
+          .fontColor(AppColors.TEXT_MUTED)
+          .width('100%')
+      }
+      .width('100%')
+      .padding(16)
+      .backgroundColor(AppColors.SURFACE)
+      .borderRadius(22)
+
+      Scroll() {
+        Column({ space: 8 }) {
+          ForEach(detail.records, (record: string) => {
+            Text(record)
+              .fontSize(15)
+              .fontColor(AppColors.TEXT)
+              .width('100%')
+              .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+              .backgroundColor(AppColors.SURFACE)
+              .borderRadius(14)
+          }, (record: string) => record)
+        }
+        .width('100%')
+      }
+      .layoutWeight(1)
+      .scrollBar(BarState.Off)
+    }
+    .width('100%')
+    .height('100%')
+    .padding({ left: 16, right: 16, top: 18, bottom: 18 })
+    .backgroundColor(AppColors.BACKGROUND)
+  }
 }
 
 @Component
 export struct FavoritePage {
   @Prop devices: FavoriteDevice[] = [];
+  onRemove: (deviceId: string) => void = (_deviceId: string) => {};
 
   @Builder
   private deviceCard(device: FavoriteDevice, primary: boolean) {
@@ -166,6 +273,9 @@ export struct FavoritePage {
       Text('⌫')
         .fontSize(22)
         .fontColor(AppColors.ERROR)
+        .onClick(() => {
+          this.onRemove(device.id);
+        })
     }
     .width('100%')
     .height(78)
@@ -194,9 +304,24 @@ export struct FavoritePage {
       .width('100%')
       .margin({ bottom: 8 })
 
-      ForEach(this.devices, (device: FavoriteDevice, index: number) => {
-        this.deviceCard(device, index === 0)
-      }, (device: FavoriteDevice) => device.id)
+      if (this.devices.length > 0) {
+        ForEach(this.devices, (device: FavoriteDevice, index: number) => {
+          this.deviceCard(device, index === 0)
+        }, (device: FavoriteDevice) => device.id)
+      } else {
+        Column({ space: 8 }) {
+          Text('暂无收藏设备')
+            .fontSize(17)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(AppColors.TEXT)
+          Text('连接成功的心率设备会自动加入收藏')
+            .fontSize(14)
+            .fontColor(AppColors.TEXT_MUTED)
+        }
+        .width('100%')
+        .height(160)
+        .justifyContent(FlexAlign.Center)
+      }
 
       Text('收藏设备会显示在扫描结果顶部，并可用于启动时自动连接。')
         .fontSize(13)

@@ -10,6 +10,7 @@ import { HeartRateViewModel } from '../application/viewmodel/HeartRateViewModel'
 import { HistoryViewModel } from '../application/viewmodel/HistoryViewModel';
 import { SettingsViewModel } from '../application/viewmodel/SettingsViewModel';
 import { HeartRateDevice } from '../domain/port/BleHeartRatePort';
+import { FavoriteDevice, HistoryDetail, HistorySummary, SessionPreview } from '../application/model/HistoryUiModels';
 
 @Entry
 @Component
@@ -19,15 +20,72 @@ struct Index {
   private settingsViewModel: SettingsViewModel = AppContainer.createSettingsViewModel();
   @State private heartRateState: HeartRateUiState = this.heartRateViewModel.state;
   @State private settingsState: SettingsUiState = this.settingsViewModel.state;
+  @State private historySummary: HistorySummary = this.historyViewModel.summary;
+  @State private historySessions: SessionPreview[] = this.historyViewModel.sessions;
+  @State private historyDetail: HistoryDetail | undefined = this.historyViewModel.selectedDetail;
+  @State private favoriteDevices: FavoriteDevice[] = this.historyViewModel.favoriteDevices;
   @State private selectedTab: number = 0;
   @State private showAbout: boolean = false;
   @State private showDevices: boolean = false;
 
+  aboutToAppear(): void {
+    void this.loadPersistedState();
+  }
+
+  private async loadPersistedState(): Promise<void> {
+    await this.settingsViewModel.load();
+    this.settingsState = this.settingsViewModel.state;
+    await this.historyViewModel.load();
+    this.syncHistoryState();
+    if (this.settingsState.autoConnect && this.historyViewModel.favoriteDevices.length > 0) {
+      const favorite = this.historyViewModel.favoriteDevices[0];
+      await this.heartRateViewModel.connectDevice({
+        id: favorite.id,
+        name: favorite.name,
+        rssi: -127,
+        deviceKind: 'ble'
+      });
+    }
+  }
+
   private async connectSelectedDevice(device: HeartRateDevice): Promise<void> {
     await this.heartRateViewModel.connectDevice(device);
     if (this.heartRateState.connected && this.heartRateState.deviceId === device.id) {
+      await this.historyViewModel.addFavoriteDevice({ id: device.id, name: device.name });
+      this.syncHistoryState();
       this.showDevices = false;
     }
+  }
+
+  private async refreshHistory(): Promise<void> {
+    await this.historyViewModel.load();
+    this.syncHistoryState();
+  }
+
+  private async openHistoryDetail(sessionId: number): Promise<void> {
+    await this.historyViewModel.openDetail(sessionId);
+    this.syncHistoryState();
+  }
+
+  private async deleteHistorySession(sessionId: number): Promise<void> {
+    await this.historyViewModel.deleteSession(sessionId);
+    this.syncHistoryState();
+  }
+
+  private async removeFavoriteDevice(deviceId: string): Promise<void> {
+    await this.historyViewModel.removeFavoriteDevice(deviceId);
+    this.syncHistoryState();
+  }
+
+  private syncSettingsState(): void {
+    this.settingsState = this.settingsViewModel.state;
+  }
+
+  private syncHistoryState(): void {
+    this.historySummary = this.historyViewModel.summary;
+    this.historySessions = this.historyViewModel.sessions;
+    this.historyDetail = this.historyViewModel.selectedDetail;
+    this.favoriteDevices = this.historyViewModel.favoriteDevices;
   }
 
   @Builder
@@ -48,6 +106,9 @@ struct Index {
     .borderRadius(26)
     .onClick(() => {
       this.selectedTab = index;
+      if (index === 1) {
+        void this.refreshHistory();
+      }
     })
   }
 
@@ -107,20 +168,47 @@ struct Index {
           })
         } else if (this.selectedTab === 1) {
           HistoryPage({
-            summary: this.historyViewModel.summary,
-            sessions: this.historyViewModel.sessions
+            summary: this.historySummary,
+            sessions: this.historySessions,
+            detail: this.historyDetail,
+            onRefresh: () => {
+              void this.refreshHistory();
+            },
+            onOpenDetail: (sessionId: number) => {
+              void this.openHistoryDetail(sessionId);
+            },
+            onCloseDetail: () => {
+              this.historyViewModel.closeDetail();
+              this.syncHistoryState();
+            },
+            onDeleteSession: (sessionId: number) => {
+              void this.deleteHistorySession(sessionId);
+            }
           })
         } else if (this.selectedTab === 2) {
-          FavoritePage({ devices: this.historyViewModel.favoriteDevices })
+          FavoritePage({
+            devices: this.favoriteDevices,
+            onRemove: (deviceId: string) => {
+              void this.removeFavoriteDevice(deviceId);
+            }
+          })
         } else {
           SettingsPage({
             state: this.settingsState,
-            onRecordHistoryChange: (value: boolean) => { this.settingsViewModel.setRecordHistory(value); },
-            onHeartbeatAnimationChange: (value: boolean) => { this.settingsViewModel.setHeartbeatAnimation(value); },
-            onDisplaySpeedChange: (value: boolean) => { this.settingsViewModel.setDisplaySpeed(value); },
-            onHideFromRecentsChange: (value: boolean) => { this.settingsViewModel.setHideFromRecents(value); },
-            onAutoConnectChange: (value: boolean) => { this.settingsViewModel.setAutoConnect(value); },
-            onAutoReconnectChange: (value: boolean) => { this.settingsViewModel.setAutoReconnect(value); },
+            onRecordHistoryChange: (value: boolean) => { this.settingsViewModel.setRecordHistory(value); this.syncSettingsState(); },
+            onHeartbeatAnimationChange: (value: boolean) => { this.settingsViewModel.setHeartbeatAnimation(value); this.syncSettingsState(); },
+            onDisplaySpeedChange: (value: boolean) => { this.settingsViewModel.setDisplaySpeed(value); this.syncSettingsState(); },
+            onHideFromRecentsChange: (value: boolean) => { this.settingsViewModel.setHideFromRecents(value); this.syncSettingsState(); },
+            onAutoConnectChange: (value: boolean) => { this.settingsViewModel.setAutoConnect(value); this.syncSettingsState(); },
+            onAutoReconnectChange: (value: boolean) => { this.settingsViewModel.setAutoReconnect(value); this.syncSettingsState(); },
+            onBackgroundMonitoringChange: (value: boolean) => { this.settingsViewModel.setBackgroundMonitoring(value); this.syncSettingsState(); },
+            onHeartRateAlertChange: (value: boolean) => { this.settingsViewModel.setHeartRateAlert(value); this.syncSettingsState(); },
+            onLowBpmThresholdChange: (value: number) => { this.settingsViewModel.setLowBpmThreshold(value); this.syncSettingsState(); },
+            onHighBpmThresholdChange: (value: number) => { this.settingsViewModel.setHighBpmThreshold(value); this.syncSettingsState(); },
+            onAlertDurationSecondsChange: (value: number) => { this.settingsViewModel.setAlertDurationSeconds(value); this.syncSettingsState(); },
+            onAlertNotificationChange: (value: boolean) => { this.settingsViewModel.setAlertNotification(value); this.syncSettingsState(); },
+            onAlertVibrationChange: (value: boolean) => { this.settingsViewModel.setAlertVibration(value); this.syncSettingsState(); },
+            onAlertSoundChange: (value: boolean) => { this.settingsViewModel.setAlertSound(value); this.syncSettingsState(); },
             onOpenAbout: () => {
               this.showAbout = true;
             }

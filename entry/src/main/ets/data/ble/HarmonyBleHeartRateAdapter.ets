@@ -1,5 +1,6 @@
 import { ble, connection } from '@kit.ConnectivityKit';
 import { util } from '@kit.ArkTS';
+import { HeartRateParser } from '../../domain/HeartRateParser';
 import {
   BleHeartRatePort,
   DeviceListener,
@@ -24,6 +25,9 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
   private activeConnectionResolver: ((result: boolean) => void) | undefined = undefined;
   private activeConnectionRejecter: ((error: Error) => void) | undefined = undefined;
   private activeConnectionDeviceId: string = '';
+  private activeHeartRateCharacteristic: ble.BLECharacteristic | undefined = undefined;
+  private measurementListener: MeasurementListener = (_measurement) => {};
+  private disconnectListener: DisconnectListener = (_reason: string) => {};
   private deviceNames: Map<string, string> = new Map<string, string>();
   private resolvingDeviceNames: Set<string> = new Set<string>();
 
@@ -168,11 +172,14 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
       }
     });
 
-    const isStandardHeartRateDevice = await this.hasStandardHeartRateProfile(client);
-    if (!isStandardHeartRateDevice) {
+    const heartRateCharacteristic = await this.findHeartRateMeasurementCharacteristic(client);
+    if (heartRateCharacteristic === undefined) {
       await this.stopActiveGattClient();
       throw new Error('设备不支持标准心率服务');
     }
+    this.activeHeartRateCharacteristic = heartRateCharacteristic;
+    client.on('BLECharacteristicChange', this.characteristicChangeCallback);
+    await client.setCharacteristicChangeNotification(heartRateCharacteristic, true);
   }
 
   async disconnect(): Promise<void> {
@@ -180,9 +187,13 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
     await this.stopScan();
   }
 
-  setMeasurementListener(_listener: MeasurementListener): void {}
+  setMeasurementListener(listener: MeasurementListener): void {
+    this.measurementListener = listener;
+  }
 
-  setDisconnectListener(_listener: DisconnectListener): void {}
+  setDisconnectListener(listener: DisconnectListener): void {
+    this.disconnectListener = listener;
+  }
 
   private connectionStateCallback = (state: ble.BLEConnectionChangeState): void => {
     if (this.activeConnectionDeviceId.length > 0 && state.deviceId !== this.activeConnectionDeviceId) {
@@ -197,13 +208,39 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
     if (state.state === 0 || state.state === 3) {
       if (this.activeConnectionRejecter) {
         this.activeConnectionRejecter(new Error('BLE connection failed'));
+        return;
       }
+      if (this.activeConnectionDeviceId.length > 0) {
+        this.disconnectListener('BLE 设备已断开');
+      }
+      this.cleanupActiveGattClient();
+    }
+  };
+
+  private characteristicChangeCallback = (characteristic: ble.BLECharacteristic): void => {
+    if (!this.isHeartRateCharacteristic(characteristic.characteristicUuid)) {
+      return;
+    }
+    const data = new Uint8Array(characteristic.characteristicValue);
+    const measurement = HeartRateParser.parse(data);
+    if (measurement.bpm > 0) {
+      this.measurementListener(measurement);
     }
   };
 
   private async stopActiveGattClient(): Promise<void> {
     if (this.activeGattClient === undefined) {
       return;
+    }
+    if (this.activeHeartRateCharacteristic !== undefined) {
+      try {
+        await this.activeGattClient.setCharacteristicChangeNotification(this.activeHeartRateCharacteristic, false);
+      } catch (_error) {
+      }
+    }
+    try {
+      this.activeGattClient.off('BLECharacteristicChange', this.characteristicChangeCallback);
+    } catch (_error) {
     }
     try {
       this.activeGattClient.off('BLEConnectionStateChange', this.connectionStateCallback);
@@ -223,6 +260,7 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
   private cleanupActiveGattClient(): void {
     this.activeGattClient = undefined;
     this.activeConnectionDeviceId = '';
+    this.activeHeartRateCharacteristic = undefined;
     this.activeConnectionResolver = undefined;
     this.activeConnectionRejecter = undefined;
   }
@@ -678,44 +716,56 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
     return deviceId.substring(suffixStart);
   }
 
-  private async hasStandardHeartRateProfile(client: ble.GattClientDevice): Promise<boolean> {
+  private async findHeartRateMeasurementCharacteristic(
+    client: ble.GattClientDevice
+  ): Promise<ble.BLECharacteristic | undefined> {
     try {
       const services = await client.getServices();
-      return this.hasHeartRateProfile(services);
+      return this.findHeartRateCharacteristic(services);
     } catch (_error) {
-      return false;
+      return undefined;
     }
   }
 
-  private hasHeartRateProfile(services: Array<ble.GattService>): boolean {
+  private findHeartRateCharacteristic(services: Array<ble.GattService>): ble.BLECharacteristic | undefined {
     for (let index = 0; index < services.length; index++) {
       const service = services[index];
-      if (this.isHeartRateService(service.serviceUuid) && this.hasHeartRateMeasurementCharacteristic(service)) {
-        return true;
+      if (this.isHeartRateService(service.serviceUuid)) {
+        const characteristic = this.findHeartRateMeasurementCharacteristicInService(service);
+        if (characteristic !== undefined) {
+          return characteristic;
+        }
       }
-      if (service.includeServices !== undefined && this.hasHeartRateProfile(service.includeServices)) {
-        return true;
+      if (service.includeServices !== undefined) {
+        const characteristic = this.findHeartRateCharacteristic(service.includeServices);
+        if (characteristic !== undefined) {
+          return characteristic;
+        }
       }
     }
-    return false;
+    return undefined;
   }
 
-  private hasHeartRateMeasurementCharacteristic(service: ble.GattService): boolean {
+  private findHeartRateMeasurementCharacteristicInService(service: ble.GattService): ble.BLECharacteristic | undefined {
     for (let index = 0; index < service.characteristics.length; index++) {
       const characteristic = service.characteristics[index];
       if (this.isHeartRateCharacteristic(characteristic.characteristicUuid)) {
-        return true;
+        return characteristic;
       }
     }
-    return false;
+    return undefined;
   }
 
   private isHeartRateService(uuid: string): boolean {
-    return this.normalizeUuid(uuid).endsWith(HarmonyBleHeartRateAdapter.HEART_RATE_SERVICE_UUID);
+    const normalizedUuid = this.normalizeUuid(uuid);
+    return normalizedUuid === HarmonyBleHeartRateAdapter.HEART_RATE_SERVICE_UUID ||
+      normalizedUuid.substring(4, 8) === HarmonyBleHeartRateAdapter.HEART_RATE_SERVICE_UUID;
   }
 
   private isHeartRateCharacteristic(uuid: string): boolean {
-    return this.normalizeUuid(uuid).endsWith(HarmonyBleHeartRateAdapter.HEART_RATE_MEASUREMENT_UUID);
+    const normalizedUuid = this.normalizeUuid(uuid);
+    return normalizedUuid === HarmonyBleHeartRateAdapter.HEART_RATE_MEASUREMENT_UUID ||
+      normalizedUuid.substring(4, 8) === HarmonyBleHeartRateAdapter.HEART_RATE_MEASUREMENT_UUID;
   }
 
   private normalizeUuid(uuid: string): string {

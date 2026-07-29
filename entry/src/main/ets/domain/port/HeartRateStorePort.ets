@@ -17,5 +17,5 @@ export interface HeartRateStorePort {
   appendRecords(records: HeartRateRecord[]): Promise<void>;
   listSessions(): Promise<HeartRateSession[]>;
   listRecords(sessionId: number): Promise<HeartRateRecord[]>;
+  deleteSession(sessionId: number): Promise<void>;
 }
-
