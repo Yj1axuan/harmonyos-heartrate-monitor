@@ -12,51 +12,78 @@ export struct HistoryPage {
   onDeleteSession: (sessionId: number) => void = (_sessionId: number) => {};
 
   @Builder
+  private sessionDeleteAction(session: SessionPreview) {
+    Text('删除')
+      .fontSize(15)
+      .fontWeight(FontWeight.Medium)
+      .fontColor(Color.White)
+      .width(76)
+      .height(88)
+      .textAlign(TextAlign.Center)
+      .backgroundColor(AppColors.ERROR)
+      .borderRadius(22)
+      .onClick(() => {
+        this.onDeleteSession(session.id);
+      })
+  }
+
+  @Builder
   private sessionCard(session: SessionPreview) {
-    Row({ space: 10 }) {
-      Column({ space: 5 }) {
-        Text(session.device)
-          .fontSize(17)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(AppColors.TEXT)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-        Text(session.time)
-          .fontSize(13)
+    ListItem() {
+      Row({ space: 10 }) {
+        Column({ space: 5 }) {
+          Text(session.device)
+            .fontSize(17)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(AppColors.TEXT)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+          Text(session.time)
+            .fontSize(13)
+            .fontColor(AppColors.TEXT_MUTED)
+          Text(session.stats)
+            .fontSize(11)
+            .fontColor('#898B93')
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
+
+        Stack() {
+          Divider().color('#D1D2D8').position({ top: 18 })
+          Path()
+            .commands(session.path)
+            .fill(Color.Transparent)
+            .stroke(AppColors.PRIMARY)
+            .strokeWidth(2)
+            .width(80)
+            .height(36)
+        }
+        .width(80)
+        .height(36)
+
+        Text('›')
+          .fontSize(28)
           .fontColor(AppColors.TEXT_MUTED)
-        Text(session.stats)
-          .fontSize(11)
-          .fontColor('#898B93')
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
-
-      Stack() {
-        Divider().color('#D1D2D8').position({ top: 18 })
-        Path()
-          .commands(session.path)
-          .fill(Color.Transparent)
-          .stroke(AppColors.PRIMARY)
-          .strokeWidth(2)
-          .width(80)
-          .height(36)
-      }
-      .width(80)
-      .height(36)
-
-      Text('›')
-        .fontSize(28)
-        .fontColor(AppColors.TEXT_MUTED)
+      .width('100%')
+      .height(88)
+      .padding({ left: 16, right: 14 })
+      .backgroundColor(AppColors.SURFACE)
+      .borderRadius(28)
+      .onClick(() => {
+        this.onOpenDetail(session.id);
+      })
     }
     .width('100%')
-    .height(88)
-    .padding({ left: 16, right: 14 })
-    .backgroundColor(AppColors.SURFACE)
-    .borderRadius(28)
-    .onClick(() => {
-      this.onOpenDetail(session.id);
+    .swipeAction({
+      start: {
+        builder: () => {
+          this.sessionDeleteAction(session)
+        },
+        actionAreaDistance: 76
+      }
     })
   }
 
@@ -129,9 +156,20 @@ export struct HistoryPage {
         .borderRadius(28)
 
         if (this.sessions.length > 0) {
-          ForEach(this.sessions, (session: SessionPreview) => {
-            this.sessionCard(session)
-          }, (session: SessionPreview) => session.id.toString())
+          Text('向右滑动历史记录可显示删除按钮，点击删除后才会移除')
+            .fontSize(13)
+            .fontColor(AppColors.TEXT_MUTED)
+            .width('100%')
+            .padding({ left: 8, bottom: 2 })
+          List({ space: 12 }) {
+            ForEach(this.sessions, (session: SessionPreview) => {
+              this.sessionCard(session)
+            }, (session: SessionPreview) => session.id.toString())
+          }
+          .width('100%')
+          .layoutWeight(1)
+          .scrollBar(BarState.Off)
+          .edgeEffect(EdgeEffect.Spring)
         } else {
           Column({ space: 8 }) {
             Text('暂无历史记录')
@@ -237,51 +275,73 @@ export struct FavoritePage {
   onRemove: (deviceId: string) => void = (_deviceId: string) => {};
 
   @Builder
+  private deleteAction(device: FavoriteDevice) {
+    Text('删除')
+      .fontSize(15)
+      .fontWeight(FontWeight.Medium)
+      .fontColor(Color.White)
+      .width(76)
+      .height(78)
+      .textAlign(TextAlign.Center)
+      .backgroundColor(AppColors.ERROR)
+      .borderRadius(22)
+      .onClick(() => {
+        this.onRemove(device.id);
+      })
+  }
+
+  @Builder
   private deviceCard(device: FavoriteDevice, primary: boolean) {
-    Row({ space: 14 }) {
-      Text('⌁')
-        .fontSize(24)
-        .fontColor(AppColors.PRIMARY)
-        .width(48)
-        .height(48)
-        .textAlign(TextAlign.Center)
-        .backgroundColor(AppColors.PRIMARY_SOFT)
-        .borderRadius(24)
-      Column({ space: 4 }) {
-        Row({ space: 7 }) {
-          Text(device.name)
-            .fontSize(17)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(AppColors.TEXT)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-          if (primary) {
-            Text('自动连接')
-              .fontSize(10)
-              .fontColor('#344C8B')
-              .padding({ left: 7, right: 7, top: 3, bottom: 3 })
-              .backgroundColor(AppColors.PRIMARY_SOFT)
-              .borderRadius(5)
+    ListItem() {
+      Row({ space: 14 }) {
+        Text('⌁')
+          .fontSize(24)
+          .fontColor(AppColors.PRIMARY)
+          .width(48)
+          .height(48)
+          .textAlign(TextAlign.Center)
+          .backgroundColor(AppColors.PRIMARY_SOFT)
+          .borderRadius(24)
+        Column({ space: 4 }) {
+          Row({ space: 7 }) {
+            Text(device.name)
+              .fontSize(17)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(AppColors.TEXT)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+            if (primary) {
+              Text('自动连接')
+                .fontSize(10)
+                .fontColor('#344C8B')
+                .padding({ left: 7, right: 7, top: 3, bottom: 3 })
+                .backgroundColor(AppColors.PRIMARY_SOFT)
+                .borderRadius(5)
+            }
           }
+          Text(device.id)
+            .fontSize(12)
+            .fontColor(AppColors.TEXT_MUTED)
         }
-        Text(device.id)
-          .fontSize(12)
-          .fontColor(AppColors.TEXT_MUTED)
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
       }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
-      Text('⌫')
-        .fontSize(22)
-        .fontColor(AppColors.ERROR)
-        .onClick(() => {
-          this.onRemove(device.id);
-        })
+      .width('100%')
+      .height(78)
+      .padding({ left: 14, right: 16 })
+      .backgroundColor(AppColors.SURFACE)
+      .borderRadius(28)
     }
     .width('100%')
-    .height(78)
-    .padding({ left: 14, right: 16 })
-    .backgroundColor(AppColors.SURFACE)
-    .borderRadius(28)
+    .swipeAction({
+      start: {
+        builder: () => {
+          this.deleteAction(device)
+        },
+        actionAreaDistance: 76
+      },
+      edgeEffect: SwipeEdgeEffect.None
+    })
   }
 
   build() {
@@ -291,23 +351,25 @@ export struct FavoritePage {
           .fontSize(28)
           .fontWeight(FontWeight.Bold)
           .fontColor(AppColors.TEXT)
-        Blank()
-        Text('⌫')
-          .fontSize(22)
-          .fontColor(AppColors.ERROR)
-          .width(42)
-          .height(42)
-          .textAlign(TextAlign.Center)
-          .backgroundColor(AppColors.SURFACE)
-          .borderRadius(21)
       }
       .width('100%')
       .margin({ bottom: 8 })
 
       if (this.devices.length > 0) {
-        ForEach(this.devices, (device: FavoriteDevice, index: number) => {
-          this.deviceCard(device, index === 0)
-        }, (device: FavoriteDevice) => device.id)
+        Text('向右滑动设备条目可显示删除按钮，点击删除后才会移除')
+          .fontSize(13)
+          .fontColor(AppColors.TEXT_MUTED)
+          .width('100%')
+          .padding({ left: 8, bottom: 2 })
+        List({ space: 12 }) {
+          ForEach(this.devices, (device: FavoriteDevice, index: number) => {
+            this.deviceCard(device, index === 0)
+          }, (device: FavoriteDevice) => device.id)
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
+        .edgeEffect(EdgeEffect.Spring)
       } else {
         Column({ space: 8 }) {
           Text('暂无收藏设备')
@@ -323,10 +385,12 @@ export struct FavoritePage {
         .justifyContent(FlexAlign.Center)
       }
 
-      Text('收藏设备会显示在扫描结果顶部，并可用于启动时自动连接。')
-        .fontSize(13)
-        .fontColor(AppColors.TEXT_MUTED)
-        .padding({ left: 8, right: 8, top: 8 })
+      if (this.devices.length > 0) {
+        Text('收藏设备会显示在扫描结果顶部，并可用于启动时自动连接。')
+          .fontSize(13)
+          .fontColor(AppColors.TEXT_MUTED)
+          .padding({ left: 8, right: 8, top: 8 })
+      }
     }
     .width('100%')
     .height('100%')

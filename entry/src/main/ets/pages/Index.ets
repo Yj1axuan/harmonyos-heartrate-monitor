@@ -11,6 +11,7 @@ import { HistoryViewModel } from '../application/viewmodel/HistoryViewModel';
 import { SettingsViewModel } from '../application/viewmodel/SettingsViewModel';
 import { HeartRateDevice } from '../domain/port/BleHeartRatePort';
 import { FavoriteDevice, HistoryDetail, HistorySummary, SessionPreview } from '../application/model/HistoryUiModels';
+import common from '@ohos.app.ability.common';
 
 @Entry
 @Component
@@ -27,6 +28,7 @@ struct Index {
   @State private selectedTab: number = 0;
   @State private showAbout: boolean = false;
   @State private showDevices: boolean = false;
+  @State private exitDialogShowing: boolean = false;
 
   aboutToAppear(): void {
     void this.loadPersistedState();
@@ -86,6 +88,66 @@ struct Index {
     this.historySessions = this.historyViewModel.sessions;
     this.historyDetail = this.historyViewModel.selectedDetail;
     this.favoriteDevices = this.historyViewModel.favoriteDevices;
+  }
+
+  onBackPress(): boolean {
+    if (this.showDevices) {
+      this.heartRateViewModel.stopDeviceDiscovery();
+      this.showDevices = false;
+      return true;
+    }
+    if (this.showAbout) {
+      this.showAbout = false;
+      return true;
+    }
+    if (this.historyDetail !== undefined) {
+      this.historyViewModel.closeDetail();
+      this.syncHistoryState();
+      return true;
+    }
+    this.showExitConfirmDialog();
+    return true;
+  }
+
+  private showExitConfirmDialog(): void {
+    if (this.exitDialogShowing) {
+      return;
+    }
+    this.exitDialogShowing = true;
+    AlertDialog.show({
+      title: '退出程序',
+      message: '确定要退出心率监控器吗？',
+      width: 300,
+      autoCancel: false,
+      primaryButton: {
+        value: '取消',
+        action: () => {
+          this.exitDialogShowing = false;
+        }
+      },
+      secondaryButton: {
+        value: '确定',
+        fontColor: AppColors.ERROR,
+        action: () => {
+          this.exitDialogShowing = false;
+          void this.exitApplication();
+        }
+      },
+      cancel: () => {
+        this.exitDialogShowing = false;
+      }
+    });
+  }
+
+  private async exitApplication(): Promise<void> {
+    try {
+      if (this.heartRateState.connected) {
+        await this.heartRateViewModel.toggleConnection();
+      }
+      const context = getContext(this) as common.UIAbilityContext;
+      await context.terminateSelf();
+    } catch (_error) {
+    }
   }
 
   @Builder
