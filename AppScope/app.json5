@@ -1,11 +1,10 @@
 {
   "app": {
-    "bundleName": "com.github.heartratemonitor.harmony",
-    "vendor": "xiaochangxu",
+    "bundleName": "com.jaxyin.heartbeat",
+    "vendor": "Jax Yin",
     "versionCode": 1000000,
-    "versionName": "0.1.0",
-    "icon": "$media:app_icon",
+    "versionName": "1.0.0",
+    "icon": "$media:icon",
     "label": "$string:app_name"
   }
 }
-

@@ -5,6 +5,7 @@ import { HeartRateUiState } from '../../application/state/HeartRateUiState';
 export struct HomePage {
   @ObjectLink state: HeartRateUiState;
   onOpenDevices: () => void = () => {};
+  onOpenFullScreen: () => void = () => {};
   onDisconnect: () => void = () => {};
 
   private availableBluetoothCount(): number {
@@ -135,14 +136,14 @@ export struct HomePage {
       Path()
         .commands(this.chartPath())
         .fill(Color.Transparent)
-        .stroke(this.state.connected && this.state.samples.length > 0 ? '#E43D3D' : '#A8ABB2')
+        .stroke(this.state.connected && this.state.samples.length > 0 ? AppColors.HEART : AppColors.TEXT_MUTED)
         .strokeWidth(4)
         .width('100%')
         .height(158)
 
       Text(this.state.connected && this.state.maxBpm > 0 ? 'Max ' + this.state.maxBpm.toString() : '等待数据')
         .fontSize(12)
-        .fontColor(this.state.connected && this.state.maxBpm > 0 ? '#E43D3D' : AppColors.TEXT_MUTED)
+        .fontColor(this.state.connected && this.state.maxBpm > 0 ? AppColors.HEART : AppColors.TEXT_MUTED)
         .position({ left: 48, top: 39 })
     }
     .width('100%')
@@ -189,11 +190,11 @@ export struct HomePage {
           Row({ space: 6 }) {
             Text('♥')
               .fontSize(30)
-              .fontColor(this.state.connected ? '#FF251A' : '#A8ABB2')
+              .fontColor(this.state.connected ? AppColors.HEART : AppColors.TEXT_MUTED)
             Text(this.state.connected ? this.state.bpm.toString() : '--')
               .fontSize(28)
               .fontWeight(FontWeight.Bold)
-              .fontColor(this.state.connected ? '#FF251A' : '#A8ABB2')
+              .fontColor(this.state.connected ? AppColors.HEART : AppColors.TEXT_MUTED)
           }
           Text('↗')
             .fontSize(25)
@@ -231,7 +232,7 @@ export struct HomePage {
         }
 
         if (this.state.connected) {
-          this.actionRow('⛶', '进入全屏模式', AppColors.PRIMARY_SOFT, '#344C8B', () => {})
+          this.actionRow('⛶', '进入全屏模式', AppColors.PRIMARY_SOFT, AppColors.PRIMARY, this.onOpenFullScreen)
 
           Row({ space: 10 }) {
             Text('⌁')

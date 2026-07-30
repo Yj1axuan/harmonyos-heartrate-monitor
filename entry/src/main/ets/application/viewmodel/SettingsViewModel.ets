@@ -18,6 +18,10 @@ export class SettingsViewModel {
       return;
     }
     const settings = await this.preferencesPort.loadSettings();
+    this.state.themeSource = settings.themeSource;
+    this.state.themeMode = settings.themeMode;
+    this.state.themeColor = settings.themeColor;
+    this.state.themeStyle = settings.themeStyle;
     this.state.recordHistory = settings.recordHistory;
     this.state.heartbeatAnimation = settings.heartbeatAnimation;
     this.state.displaySpeed = settings.displaySpeed;
@@ -32,7 +36,29 @@ export class SettingsViewModel {
     this.state.alertNotification = settings.alertNotification;
     this.state.alertVibration = settings.alertVibration;
     this.state.alertSound = settings.alertSound;
+    this.state.fullscreenSoundMode = settings.fullscreenSoundMode;
+    this.state.fullscreenDisplayColor = settings.fullscreenDisplayColor;
     this.onSettingsChanged(this.state);
+  }
+
+  setThemeSource(value: 'system' | 'custom'): void {
+    this.state.themeSource = value;
+    this.save();
+  }
+
+  setThemeMode(value: 'system' | 'light' | 'dark'): void {
+    this.state.themeMode = value;
+    this.save();
+  }
+
+  setThemeColor(value: string): void {
+    this.state.themeColor = value;
+    this.save();
+  }
+
+  setThemeStyle(value: 'soft' | 'vivid' | 'expressive' | 'neutral' | 'monochrome' | 'fidelity' | 'content' | 'rainbow' | 'fruit'): void {
+    this.state.themeStyle = value;
+    this.save();
   }
 
   setRecordHistory(value: boolean): void {
@@ -102,6 +128,16 @@ export class SettingsViewModel {
 
   setAlertSound(value: boolean): void {
     this.state.alertSound = value;
+    this.save();
+  }
+
+  setFullscreenSoundMode(value: string): void {
+    this.state.fullscreenSoundMode = value;
+    this.save();
+  }
+
+  setFullscreenDisplayColor(value: string): void {
+    this.state.fullscreenDisplayColor = value;
     this.save();
   }
 

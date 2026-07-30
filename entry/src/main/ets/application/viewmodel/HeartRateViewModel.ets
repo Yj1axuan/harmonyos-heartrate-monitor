@@ -10,6 +10,7 @@ export class HeartRateViewModel {
   readonly state: HeartRateUiState = new HeartRateUiState();
   private observeHeartRate: ObserveHeartRateUseCase;
   private toggleHeartRateConnection: ToggleHeartRateConnectionUseCase;
+  private onStateChanged: (state: HeartRateUiState) => void = (_state: HeartRateUiState) => {};
 
   constructor(
     observeHeartRate: ObserveHeartRateUseCase,
@@ -24,6 +25,11 @@ export class HeartRateViewModel {
     this.observeHeartRate.observeDevices((devices: HeartRateDevice[]) => {
       this.state.devices = devices;
     });
+  }
+
+  setStateListener(listener: (state: HeartRateUiState) => void): void {
+    this.onStateChanged = listener;
+    this.onStateChanged(this.state);
   }
 
   async toggleConnection(): Promise<void> {
@@ -134,11 +140,13 @@ export class HeartRateViewModel {
     this.state.updatedAt = snapshot.updatedAt;
     if (snapshot.state !== MonitoringState.Connected) {
       this.resetMeasurements();
+      this.onStateChanged(this.state);
       return;
     }
     if (snapshot.bpm > 0) {
       this.recordMeasurement(snapshot.bpm, snapshot.updatedAt);
     }
+    this.onStateChanged(this.state);
   }
 
   private recordMeasurement(bpm: number, updatedAt: number): void {

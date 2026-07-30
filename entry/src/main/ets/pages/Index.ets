@@ -1,8 +1,9 @@
-import { AppColors } from '../ui/theme/AppTheme';
+﻿import { AppColors } from '../ui/theme/AppTheme';
 import { HomePage } from '../ui/pages/HomePage';
+import { FullScreenPage } from '../ui/pages/FullScreenPage';
 import { DeviceListPage } from '../ui/pages/DeviceListPage';
 import { FavoritePage, HistoryPage } from '../ui/pages/HistoryPage';
-import { AboutPage, SettingsPage } from '../ui/pages/SettingsPage';
+import { AboutPage, SettingsPage, ThemeSettingsPage } from '../ui/pages/SettingsPage';
 import { AppContainer } from '../core/di/AppContainer';
 import { HeartRateUiState } from '../application/state/HeartRateUiState';
 import { SettingsUiState } from '../application/state/SettingsUiState';
@@ -27,16 +28,22 @@ struct Index {
   @State private favoriteDevices: FavoriteDevice[] = this.historyViewModel.favoriteDevices;
   @State private selectedTab: number = 0;
   @State private showAbout: boolean = false;
+  @State private showThemeSettings: boolean = false;
   @State private showDevices: boolean = false;
+  @State private showFullScreen: boolean = false;
   @State private exitDialogShowing: boolean = false;
+  @State private themeRevision: number = 0;
 
   aboutToAppear(): void {
+    AppContainer.setThemeChangedListener(() => {
+      this.themeRevision = this.themeRevision + 1;
+    });
     void this.loadPersistedState();
   }
 
   private async loadPersistedState(): Promise<void> {
     await this.settingsViewModel.load();
-    this.settingsState = this.settingsViewModel.state;
+    this.syncSettingsState();
     await this.historyViewModel.load();
     this.syncHistoryState();
     if (this.settingsState.autoConnect && this.historyViewModel.favoriteDevices.length > 0) {
@@ -81,6 +88,8 @@ struct Index {
 
   private syncSettingsState(): void {
     this.settingsState = this.settingsViewModel.state;
+    AppContainer.applyTheme(this.settingsState);
+    this.themeRevision = this.themeRevision + 1;
   }
 
   private syncHistoryState(): void {
@@ -91,6 +100,10 @@ struct Index {
   }
 
   onBackPress(): boolean {
+    if (this.showFullScreen) {
+      void this.exitFullScreen();
+      return true;
+    }
     if (this.showDevices) {
       this.heartRateViewModel.stopDeviceDiscovery();
       this.showDevices = false;
@@ -98,6 +111,10 @@ struct Index {
     }
     if (this.showAbout) {
       this.showAbout = false;
+      return true;
+    }
+    if (this.showThemeSettings) {
+      this.showThemeSettings = false;
       return true;
     }
     if (this.historyDetail !== undefined) {
@@ -141,6 +158,9 @@ struct Index {
 
   private async exitApplication(): Promise<void> {
     try {
+      if (this.showFullScreen) {
+        await this.exitFullScreen();
+      }
       if (this.heartRateState.connected) {
         await this.heartRateViewModel.toggleConnection();
       }
@@ -150,21 +170,34 @@ struct Index {
     }
   }
 
+  private async enterFullScreen(): Promise<void> {
+    if (!this.heartRateState.connected) {
+      return;
+    }
+    this.showFullScreen = true;
+    await AppContainer.setImmersiveMode(true);
+  }
+
+  private async exitFullScreen(): Promise<void> {
+    this.showFullScreen = false;
+    await AppContainer.setImmersiveMode(false);
+  }
+
   @Builder
   private navItem(index: number, icon: string, title: string) {
     Column({ space: 2 }) {
       Text(icon)
         .fontSize(26)
-        .fontColor(this.selectedTab === index ? AppColors.PRIMARY : '#3F4149')
+        .fontColor(this.selectedTab === index ? AppColors.PRIMARY : AppColors.TEXT_MUTED)
       Text(title)
         .fontSize(12)
         .fontWeight(this.selectedTab === index ? FontWeight.Medium : FontWeight.Regular)
-        .fontColor(this.selectedTab === index ? AppColors.PRIMARY : '#3F4149')
+        .fontColor(this.selectedTab === index ? AppColors.PRIMARY : AppColors.TEXT_MUTED)
     }
     .width('25%')
     .height(58)
     .justifyContent(FlexAlign.Center)
-    .backgroundColor(this.selectedTab === index ? '#E4E4EA' : Color.Transparent)
+    .backgroundColor(this.selectedTab === index ? AppColors.PRIMARY_SOFT : Color.Transparent)
     .borderRadius(26)
     .onClick(() => {
       this.selectedTab = index;
@@ -177,7 +210,7 @@ struct Index {
   @Builder
   private bottomNavigation() {
     Row() {
-      this.navItem(0, '⌂', '首页')
+      this.navItem(0, '♥', '首页')
       this.navItem(1, '◷', '历史')
       this.navItem(2, '☆', '收藏')
       this.navItem(3, '⚙', '设置')
@@ -186,8 +219,8 @@ struct Index {
     .height(66)
     .padding(4)
     .margin({ left: 14, right: 14, bottom: 10 })
-    .backgroundColor('#F8F7FAF2')
-    .border({ width: 1, color: '#FFFFFFCC' })
+    .backgroundColor(AppColors.SURFACE)
+    .border({ width: 1, color: AppColors.DIVIDER })
     .borderRadius(34)
     .shadow({ radius: 18, color: '#25000000', offsetY: 5 })
   }
@@ -214,6 +247,25 @@ struct Index {
             this.showAbout = false;
           }
         })
+      } else if (this.showThemeSettings) {
+        ThemeSettingsPage({
+          state: this.settingsState,
+          onBack: () => {
+            this.showThemeSettings = false;
+          },
+          onThemeSourceChange: (value: 'system' | 'custom') => { this.settingsViewModel.setThemeSource(value); this.syncSettingsState(); },
+          onThemeModeChange: (value: 'system' | 'light' | 'dark') => { this.settingsViewModel.setThemeMode(value); this.syncSettingsState(); },
+          onThemeColorChange: (value: string) => { this.settingsViewModel.setThemeColor(value); this.syncSettingsState(); },
+          onThemeStyleChange: (value: 'soft' | 'vivid' | 'expressive' | 'neutral' | 'monochrome' | 'fidelity' | 'content' | 'rainbow' | 'fruit') => { this.settingsViewModel.setThemeStyle(value); this.syncSettingsState(); }
+        })
+      } else if (this.showFullScreen) {
+        FullScreenPage({
+          state: this.heartRateState,
+          settings: this.settingsState,
+          onExit: (_reason: string) => {
+            void this.exitFullScreen();
+          }
+        })
       } else {
         if (this.selectedTab === 0) {
           HomePage({
@@ -224,7 +276,13 @@ struct Index {
                 this.heartRateViewModel.loadKnownDevices();
               }
             },
+            onOpenFullScreen: () => {
+              void this.enterFullScreen();
+            },
             onDisconnect: () => {
+              if (this.showFullScreen) {
+                void this.exitFullScreen();
+              }
               this.heartRateViewModel.toggleConnection();
             }
           })
@@ -257,6 +315,14 @@ struct Index {
         } else {
           SettingsPage({
             state: this.settingsState,
+            showFullscreenModeEntry: this.heartRateState.connected,
+            onOpenFullScreen: () => {
+              void this.enterFullScreen();
+            },
+            onThemeSourceChange: (value: 'system' | 'custom') => { this.settingsViewModel.setThemeSource(value); this.syncSettingsState(); },
+            onThemeModeChange: (value: 'system' | 'light' | 'dark') => { this.settingsViewModel.setThemeMode(value); this.syncSettingsState(); },
+            onThemeColorChange: (value: string) => { this.settingsViewModel.setThemeColor(value); this.syncSettingsState(); },
+            onThemeStyleChange: (value: 'soft' | 'vivid' | 'expressive' | 'neutral' | 'monochrome' | 'fidelity' | 'content' | 'rainbow' | 'fruit') => { this.settingsViewModel.setThemeStyle(value); this.syncSettingsState(); },
             onRecordHistoryChange: (value: boolean) => { this.settingsViewModel.setRecordHistory(value); this.syncSettingsState(); },
             onHeartbeatAnimationChange: (value: boolean) => { this.settingsViewModel.setHeartbeatAnimation(value); this.syncSettingsState(); },
             onDisplaySpeedChange: (value: boolean) => { this.settingsViewModel.setDisplaySpeed(value); this.syncSettingsState(); },
@@ -271,6 +337,11 @@ struct Index {
             onAlertNotificationChange: (value: boolean) => { this.settingsViewModel.setAlertNotification(value); this.syncSettingsState(); },
             onAlertVibrationChange: (value: boolean) => { this.settingsViewModel.setAlertVibration(value); this.syncSettingsState(); },
             onAlertSoundChange: (value: boolean) => { this.settingsViewModel.setAlertSound(value); this.syncSettingsState(); },
+            onFullscreenSoundModeChange: (value: string) => { this.settingsViewModel.setFullscreenSoundMode(value); this.syncSettingsState(); },
+            onFullscreenDisplayColorChange: (value: string) => { this.settingsViewModel.setFullscreenDisplayColor(value); this.syncSettingsState(); },
+            onOpenThemeSettings: () => {
+              this.showThemeSettings = true;
+            },
             onOpenAbout: () => {
               this.showAbout = true;
             }
