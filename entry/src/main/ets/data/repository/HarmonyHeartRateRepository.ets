@@ -127,6 +127,7 @@ export class HarmonyHeartRateRepository implements HeartRateRepository {
       }
       this.pendingRecords = [];
       this.resetAlertState();
+      await this.requestAlertNotificationPermissionIfNeeded();
       await this.startBackgroundMonitoringIfNeeded();
       this.updateSnapshot(MonitoringState.Connected, this.snapshot.bpm, device.id, device.name);
     } catch (error) {
@@ -145,9 +146,13 @@ export class HarmonyHeartRateRepository implements HeartRateRepository {
   }
 
   updateSettings(settings: SettingsUiState): void {
+    const shouldRequestNotificationPermission = settings.alertNotification && !this.settings.alertNotification;
     this.settings = settings;
     if (!settings.heartRateAlert) {
       this.resetAlertState();
+    }
+    if (shouldRequestNotificationPermission) {
+      void this.requestAlertNotificationPermissionIfNeeded();
     }
     if (this.snapshot.state === MonitoringState.Connected) {
       if (settings.backgroundMonitoring) {
@@ -264,6 +269,7 @@ export class HarmonyHeartRateRepository implements HeartRateRepository {
       }
       this.pendingRecords = [];
       this.resetAlertState();
+      await this.requestAlertNotificationPermissionIfNeeded();
       await this.startBackgroundMonitoringIfNeeded();
       this.updateSnapshot(MonitoringState.Connected, 0, device.id, device.name);
     } catch (_error) {
@@ -277,8 +283,14 @@ export class HarmonyHeartRateRepository implements HeartRateRepository {
     if (!this.settings.backgroundMonitoring || this.appContext === undefined || this.alertPort === undefined) {
       return;
     }
-    await this.alertPort.requestNotificationPermission(this.appContext);
     await this.alertPort.startBackgroundMonitoring(this.appContext);
+  }
+
+  private async requestAlertNotificationPermissionIfNeeded(): Promise<void> {
+    if (!this.settings.alertNotification || this.appContext === undefined || this.alertPort === undefined) {
+      return;
+    }
+    await this.alertPort.requestNotificationPermission(this.appContext);
   }
 
   private async stopBackgroundMonitoring(): Promise<void> {

@@ -172,6 +172,15 @@ export struct FullScreenPage {
     if (this.settings.fullscreenDisplayColor === 'cyan') {
       return '#49D6FF';
     }
+    if (this.settings.fullscreenDisplayColor === 'yellow') {
+      return '#FFD45A';
+    }
+    if (this.settings.fullscreenDisplayColor === 'purple') {
+      return '#A98CFF';
+    }
+    if (this.settings.fullscreenDisplayColor === 'white') {
+      return '#F7F8FF';
+    }
     return '#FF4A4A';
   }
 

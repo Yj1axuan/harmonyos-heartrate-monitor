@@ -137,7 +137,11 @@ export class SettingsViewModel {
   }
 
   setFullscreenDisplayColor(value: string): void {
-    this.state.fullscreenDisplayColor = value;
+    if (value === 'red' || value === 'green' || value === 'cyan' || value === 'yellow' || value === 'purple' || value === 'white') {
+      this.state.fullscreenDisplayColor = value;
+    } else {
+      this.state.fullscreenDisplayColor = 'red';
+    }
     this.save();
   }
 

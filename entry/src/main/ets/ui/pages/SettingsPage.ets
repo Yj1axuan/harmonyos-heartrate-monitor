@@ -17,12 +17,28 @@
 } from '../theme/AppTheme';
 import { SettingsUiState } from '../../application/state/SettingsUiState';
 
+interface FullscreenDisplayColorOption {
+  value: string;
+  title: string;
+  hex: string;
+}
+
+const FULLSCREEN_DISPLAY_COLOR_OPTIONS: FullscreenDisplayColorOption[] = [
+  { value: 'red', title: '红色', hex: '#FF4A4A' },
+  { value: 'green', title: '绿色', hex: '#46E08A' },
+  { value: 'cyan', title: '青色', hex: '#49D6FF' },
+  { value: 'yellow', title: '黄色', hex: '#FFD45A' },
+  { value: 'purple', title: '紫色', hex: '#A98CFF' },
+  { value: 'white', title: '白色', hex: '#F7F8FF' }
+];
+
 @Component
 struct SettingSwitchRow {
   icon: string = '•';
   title: string = '';
   subtitle: string = '';
   @Prop checked: boolean = false;
+  @Prop rowEnabled: boolean = true;
   onChange: (value: boolean) => void = (_value: boolean) => {};
 
   build() {
@@ -51,12 +67,15 @@ struct SettingSwitchRow {
       Toggle({ type: ToggleType.Switch, isOn: this.checked })
         .selectedColor(AppColors.PRIMARY)
         .onChange((value: boolean) => {
-          this.onChange(value);
+          if (this.rowEnabled) {
+            this.onChange(value);
+          }
         })
     }
     .width('100%')
     .height(76)
     .padding({ left: 14, right: 14 })
+    .opacity(this.rowEnabled ? 1 : 0.45)
   }
 }
 
@@ -108,7 +127,8 @@ struct SettingStepperRow {
   icon: string = '•';
   title: string = '';
   subtitle: string = '';
-  valueText: string = '';
+  @Prop valueText: string = '';
+  @Prop rowEnabled: boolean = true;
   onDecrease: () => void = () => {};
   onIncrease: () => void = () => {};
 
@@ -136,38 +156,43 @@ struct SettingStepperRow {
       .layoutWeight(1)
       .alignItems(HorizontalAlign.Start)
       Row({ space: 8 }) {
-        Text('-')
-          .fontSize(20)
-          .fontColor(AppColors.PRIMARY)
-          .width(32)
-          .height(32)
-          .textAlign(TextAlign.Center)
-          .backgroundColor(AppColors.PRIMARY_SOFT)
-          .borderRadius(16)
-          .onClick(() => {
-            this.onDecrease();
-          })
+        Button({ type: ButtonType.Circle }) {
+          Text('-')
+            .fontSize(20)
+            .fontColor(AppColors.PRIMARY)
+            .textAlign(TextAlign.Center)
+        }
+        .width(32)
+        .height(32)
+        .backgroundColor(AppColors.PRIMARY_SOFT)
+        .enabled(this.rowEnabled)
+        .onClick(() => {
+          this.onDecrease();
+        })
         Text(this.valueText)
           .fontSize(15)
           .fontColor(AppColors.TEXT)
           .width(76)
           .textAlign(TextAlign.Center)
-        Text('+')
-          .fontSize(20)
-          .fontColor(AppColors.PRIMARY)
-          .width(32)
-          .height(32)
-          .textAlign(TextAlign.Center)
-          .backgroundColor(AppColors.PRIMARY_SOFT)
-          .borderRadius(16)
-          .onClick(() => {
-            this.onIncrease();
-          })
+        Button({ type: ButtonType.Circle }) {
+          Text('+')
+            .fontSize(20)
+            .fontColor(AppColors.PRIMARY)
+            .textAlign(TextAlign.Center)
+        }
+        .width(32)
+        .height(32)
+        .backgroundColor(AppColors.PRIMARY_SOFT)
+        .enabled(this.rowEnabled)
+        .onClick(() => {
+          this.onIncrease();
+        })
       }
     }
     .width('100%')
     .height(76)
     .padding({ left: 14, right: 14 })
+    .opacity(this.rowEnabled ? 1 : 0.45)
   }
 }
 
@@ -247,6 +272,7 @@ export struct SettingsPage {
   @State private pickerHue: number = 220;
   @State private pickerSaturation: number = 58;
   @State private pickerValue: number = 66;
+  @State private showFullscreenColorOptions: boolean = false;
 
   aboutToAppear(): void {
     this.syncPickerFromColor(this.state.themeColor);
@@ -301,16 +327,6 @@ export struct SettingsPage {
     return 'off';
   }
 
-  private nextFullscreenDisplayColor(): string {
-    if (this.state.fullscreenDisplayColor === 'red') {
-      return 'green';
-    }
-    if (this.state.fullscreenDisplayColor === 'green') {
-      return 'cyan';
-    }
-    return 'red';
-  }
-
   private soundModeLabel(): string {
     if (this.state.fullscreenSoundMode === 'off') {
       return '关闭';
@@ -322,13 +338,29 @@ export struct SettingsPage {
   }
 
   private colorLabel(): string {
-    if (this.state.fullscreenDisplayColor === 'green') {
-      return '绿色';
+    const option = this.fullscreenColorOption(this.state.fullscreenDisplayColor);
+    return option.title;
+  }
+
+  private fullscreenColorHex(): string {
+    const option = this.fullscreenColorOption(this.state.fullscreenDisplayColor);
+    return option.hex;
+  }
+
+  private fullscreenColorOption(value: string): FullscreenDisplayColorOption {
+    const found = FULLSCREEN_DISPLAY_COLOR_OPTIONS.find((option: FullscreenDisplayColorOption) => option.value === value);
+    if (found !== undefined) {
+      return found;
     }
-    if (this.state.fullscreenDisplayColor === 'cyan') {
-      return '青色';
+    return FULLSCREEN_DISPLAY_COLOR_OPTIONS[0];
+  }
+
+  private alertSummary(): string {
+    if (!this.state.heartRateAlert) {
+      return '已关闭，不检测异常心率';
     }
-    return '红色';
+    return this.state.lowBpmThreshold.toString() + '-' + this.state.highBpmThreshold.toString() +
+      ' bpm 外持续 ' + this.state.alertDurationSeconds.toString() + ' 秒后提醒';
   }
 
   @Builder
@@ -347,6 +379,61 @@ export struct SettingsPage {
       .strokeWidth(1)
       .color(AppColors.DIVIDER)
       .margin({ left: 72 })
+  }
+
+  @Builder
+  private fullscreenColorChip(option: FullscreenDisplayColorOption) {
+    Column({ space: 5 }) {
+      Stack({ alignContent: Alignment.Center }) {
+        Text(this.state.fullscreenDisplayColor === option.value ? '✓' : '')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(option.value === 'white' ? AppColors.TEXT : AppColors.WHITE)
+      }
+      .width(46)
+      .height(46)
+      .backgroundColor(option.hex)
+      .borderRadius(23)
+      .border({ width: this.state.fullscreenDisplayColor === option.value ? 3 : 1,
+        color: this.state.fullscreenDisplayColor === option.value ? AppColors.PRIMARY : AppColors.DIVIDER })
+      Text(option.title)
+        .fontSize(12)
+        .fontColor(AppColors.TEXT_MUTED)
+    }
+    .width(58)
+    .margin({ right: 8, bottom: 8 })
+    .onClick(() => {
+      this.onFullscreenDisplayColorChange(option.value);
+    })
+  }
+
+  @Builder
+  private fullscreenColorOptionsPanel() {
+    Column({ space: 10 }) {
+      Row({ space: 10 }) {
+        Text('预览')
+          .fontSize(13)
+          .fontColor(AppColors.TEXT_MUTED)
+        Text('❤ 128 BPM')
+          .fontSize(22)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.fullscreenColorHex())
+      }
+      .width('100%')
+      .height(54)
+      .padding({ left: 12, right: 12 })
+      .backgroundColor('#111318')
+      .borderRadius(18)
+
+      Flex({ wrap: FlexWrap.Wrap }) {
+        ForEach(FULLSCREEN_DISPLAY_COLOR_OPTIONS, (option: FullscreenDisplayColorOption) => {
+          this.fullscreenColorChip(option)
+        }, (option: FullscreenDisplayColorOption) => option.value)
+      }
+      .width('100%')
+    }
+    .width('100%')
+    .padding({ left: 14, right: 14, bottom: 14 })
   }
 
   @Builder
@@ -561,7 +648,10 @@ export struct SettingsPage {
             onTap: () => { this.onFullscreenSoundModeChange(this.nextFullscreenSoundMode()); } })
           this.line()
           SettingLinkRow({ icon: '◐', title: '全屏显示颜色', subtitle: this.colorLabel(),
-            onTap: () => { this.onFullscreenDisplayColorChange(this.nextFullscreenDisplayColor()); } })
+            onTap: () => { this.showFullscreenColorOptions = !this.showFullscreenColorOptions; } })
+          if (this.showFullscreenColorOptions) {
+            this.fullscreenColorOptionsPanel()
+          }
         }
         .width('100%')
         .backgroundColor(AppColors.SURFACE)
@@ -593,32 +683,38 @@ export struct SettingsPage {
 
         this.sectionTitle('心率预警')
         Column() {
-          SettingSwitchRow({ icon: '!', title: '心率预警', subtitle: '超过阈值并持续指定时间后提醒',
+          SettingSwitchRow({ icon: '!', title: '心率预警', subtitle: this.alertSummary(),
             checked: this.state.heartRateAlert, onChange: (value: boolean) => { this.onHeartRateAlertChange(value); } })
           this.line()
           SettingStepperRow({ icon: '↑', title: '高心率阈值', subtitle: '高于该数值后开始计时',
             valueText: this.state.highBpmThreshold + ' bpm',
+            rowEnabled: this.state.heartRateAlert,
             onDecrease: () => { this.onHighBpmThresholdChange(this.state.highBpmThreshold - 5); },
             onIncrease: () => { this.onHighBpmThresholdChange(this.state.highBpmThreshold + 5); } })
           this.line()
           SettingStepperRow({ icon: '↓', title: '低心率阈值', subtitle: '低于该数值后开始计时',
             valueText: this.state.lowBpmThreshold + ' bpm',
+            rowEnabled: this.state.heartRateAlert,
             onDecrease: () => { this.onLowBpmThresholdChange(this.state.lowBpmThreshold - 5); },
             onIncrease: () => { this.onLowBpmThresholdChange(this.state.lowBpmThreshold + 5); } })
           this.line()
           SettingStepperRow({ icon: 's', title: '持续时间', subtitle: '异常持续达到该时间才触发',
             valueText: this.state.alertDurationSeconds + ' 秒',
+            rowEnabled: this.state.heartRateAlert,
             onDecrease: () => { this.onAlertDurationSecondsChange(this.state.alertDurationSeconds - 5); },
             onIncrease: () => { this.onAlertDurationSecondsChange(this.state.alertDurationSeconds + 5); } })
           this.line()
           SettingSwitchRow({ icon: '铃', title: '通知提醒', subtitle: '心率异常时发送系统通知',
-            checked: this.state.alertNotification, onChange: (value: boolean) => { this.onAlertNotificationChange(value); } })
+            checked: this.state.alertNotification, rowEnabled: this.state.heartRateAlert,
+            onChange: (value: boolean) => { this.onAlertNotificationChange(value); } })
           this.line()
-          SettingSwitchRow({ icon: '声', title: '声音提醒', subtitle: '跟随系统通知声音策略',
-            checked: this.state.alertSound, onChange: (value: boolean) => { this.onAlertSoundChange(value); } })
+          SettingSwitchRow({ icon: '声', title: '声音提醒', subtitle: '心率异常时播放本机提示音',
+            checked: this.state.alertSound, rowEnabled: this.state.heartRateAlert,
+            onChange: (value: boolean) => { this.onAlertSoundChange(value); } })
           this.line()
           SettingSwitchRow({ icon: '震', title: '振动提醒', subtitle: '心率异常时触发振动',
-            checked: this.state.alertVibration, onChange: (value: boolean) => { this.onAlertVibrationChange(value); } })
+            checked: this.state.alertVibration, rowEnabled: this.state.heartRateAlert,
+            onChange: (value: boolean) => { this.onAlertVibrationChange(value); } })
         }
         .width('100%')
         .backgroundColor(AppColors.SURFACE)
@@ -636,7 +732,7 @@ export struct SettingsPage {
 
         this.sectionTitle('其他')
         Column() {
-          SettingLinkRow({ icon: 'ⓘ', title: '详细信息', subtitle: '版本、隐私与开源协议',
+          SettingLinkRow({ icon: 'ⓘ', title: '详细信息', subtitle: '版本、隐私与协议',
             onTap: () => { this.onOpenAbout(); } })
           this.line()
           SettingLinkRow({ icon: '▣', title: '后台运行说明', subtitle: '查看后台任务运行状态' })
