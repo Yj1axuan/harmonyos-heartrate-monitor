@@ -1018,9 +1018,15 @@ export struct ThemeSettingsPage {
 @Component
 export struct AboutPage {
   onBack: () => void = () => {};
+  @State private appInfoExpanded: boolean = true;
+  @State private featuresExpanded: boolean = false;
+  @State private permissionsExpanded: boolean = false;
+  @State private privacyExpanded: boolean = false;
+  @State private disclaimerExpanded: boolean = false;
+  @State private serviceExpanded: boolean = false;
 
   @Builder
-  private aboutRow(icon: string, title: string, subtitle: string) {
+  private aboutRow(icon: string, title: string, subtitle: string, detail: string = '') {
     Row({ space: 14 }) {
       Text(icon)
         .fontSize(22)
@@ -1038,21 +1044,70 @@ export struct AboutPage {
         Text(subtitle)
           .fontSize(13)
           .fontColor(AppColors.TEXT_MUTED)
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        if (detail.length > 0) {
+          Text(detail)
+            .fontSize(12)
+            .fontColor(AppColors.TEXT_MUTED)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
       }
       .layoutWeight(1)
       .alignItems(HorizontalAlign.Start)
-      Text('›')
-        .fontSize(28)
-        .fontColor(AppColors.TEXT_MUTED)
     }
     .width('100%')
-    .height(78)
+    .constraintSize({ minHeight: 78 })
     .padding({ left: 14, right: 16 })
+  }
+
+  @Builder
+  private accordionHeader(title: string, expanded: boolean, onTap: () => void) {
+    Row({ space: 10 }) {
+      Text(title)
+        .fontSize(17)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(AppColors.TEXT)
+        .layoutWeight(1)
+      Text(expanded ? '⌃' : '⌄')
+        .fontSize(20)
+        .fontColor(AppColors.TEXT_MUTED)
+        .width(28)
+        .textAlign(TextAlign.Center)
+    }
+      .width('100%')
+      .height(58)
+      .padding({ left: 16, right: 14 })
+      .backgroundColor(AppColors.SURFACE)
+      .borderRadius(expanded ? 24 : 28)
+      .onClick(() => {
+        onTap();
+      })
+  }
+
+  @Builder
+  private paragraphContent(title: string, content: string) {
+    Column({ space: 8 }) {
+      Text(title)
+        .fontSize(17)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(AppColors.TEXT)
+        .width('100%')
+      Text(content)
+        .fontSize(13)
+        .lineHeight(21)
+        .fontColor(AppColors.TEXT_MUTED)
+        .width('100%')
+    }
+    .width('100%')
+    .padding(16)
+    .backgroundColor(AppColors.SURFACE)
   }
 
   build() {
     Scroll() {
-      Column({ space: 16 }) {
+      Column({ space: 10 }) {
         Row({ space: 12 }) {
           Text('‹')
             .fontSize(28)
@@ -1071,17 +1126,130 @@ export struct AboutPage {
             .fontColor(AppColors.TEXT)
         }
         .width('100%')
+        .margin({ bottom: 6 })
+
+        Column({ space: 8 }) {
+          Text('心率监控器')
+            .fontSize(24)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(AppColors.TEXT)
+          Text('BLE 标准心率设备实时监测工具')
+            .fontSize(14)
+            .fontColor(AppColors.TEXT_MUTED)
+          Text('适用于运动、骑行、训练和日常心率查看。')
+            .fontSize(13)
+            .fontColor(AppColors.TEXT_MUTED)
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Center)
+        .padding({ left: 18, right: 18, top: 18, bottom: 18 })
+        .backgroundColor(AppColors.SURFACE)
+        .borderRadius(28)
 
         Column() {
-          this.aboutRow('♥', '心率监控器', 'BLE 标准心率设备实时监测')
-          Divider().color(AppColors.DIVIDER).margin({ left: 72 })
-          this.aboutRow('版', '版本', '1.0.0')
-          Divider().color(AppColors.DIVIDER).margin({ left: 72 })
-          this.aboutRow('隐', '隐私', '心率数据仅按设置保存在本机')
+          this.accordionHeader('应用信息', this.appInfoExpanded, () => {
+            this.appInfoExpanded = !this.appInfoExpanded;
+          })
+          if (this.appInfoExpanded) {
+            this.aboutRow('版', '版本', '1.0.0', 'versionCode 1000000')
+            Divider().color(AppColors.DIVIDER).margin({ left: 72 })
+            this.aboutRow('者', '开发者', 'Jax Yin')
+            Divider().color(AppColors.DIVIDER).margin({ left: 72 })
+            this.aboutRow('端', '支持设备', 'HarmonyOS 手机和平板')
+          }
         }
         .width('100%')
         .backgroundColor(AppColors.SURFACE)
         .borderRadius(28)
+
+        Column() {
+          this.accordionHeader('核心功能', this.featuresExpanded, () => {
+            this.featuresExpanded = !this.featuresExpanded;
+          })
+          if (this.featuresExpanded) {
+            this.aboutRow('蓝', '蓝牙心率设备', '扫描并连接标准 BLE 心率设备', '支持 Heart Rate Measurement 0x2A37')
+            Divider().color(AppColors.DIVIDER).margin({ left: 72 })
+            this.aboutRow('图', '实时监测', '显示当前 BPM、最高/最低值和趋势图')
+            Divider().color(AppColors.DIVIDER).margin({ left: 72 })
+            this.aboutRow('全', '全屏模式', '提供大字号心率、心电波形、颜色和提示音设置')
+            Divider().color(AppColors.DIVIDER).margin({ left: 72 })
+            this.aboutRow('警', '心率预警', '超过高/低阈值并持续指定时间后提醒')
+            Divider().color(AppColors.DIVIDER).margin({ left: 72 })
+            this.aboutRow('历', '历史记录', '按设置将监测会话和心率记录保存在本机')
+          }
+        }
+        .width('100%')
+        .backgroundColor(AppColors.SURFACE)
+        .borderRadius(28)
+
+        Column() {
+          this.accordionHeader('权限说明', this.permissionsExpanded, () => {
+            this.permissionsExpanded = !this.permissionsExpanded;
+          })
+          if (this.permissionsExpanded) {
+            this.aboutRow('蓝', '蓝牙权限', '用于扫描、识别和连接附近的心率监测设备')
+            Divider().color(AppColors.DIVIDER).margin({ left: 72 })
+            this.aboutRow('后', '后台运行权限', '用于连接设备后维持后台心率监测任务')
+            Divider().color(AppColors.DIVIDER).margin({ left: 72 })
+            this.aboutRow('震', '振动权限', '用于心率异常时触发本机振动提醒')
+            Divider().color(AppColors.DIVIDER).margin({ left: 72 })
+            this.aboutRow('通', '通知权限', '用于心率异常时发送系统通知提醒')
+          }
+        }
+        .width('100%')
+        .backgroundColor(AppColors.SURFACE)
+        .borderRadius(28)
+
+        Column() {
+          this.accordionHeader('隐私与数据', this.privacyExpanded, () => {
+            this.privacyExpanded = !this.privacyExpanded;
+          })
+          if (this.privacyExpanded) {
+            this.paragraphContent('隐私说明',
+              '应用不会主动上传心率数据、设备名称或历史记录。历史数据仅在开启“记录历史数据”后保存在本机，用于历史页面展示。卸载应用或清除应用数据后，本机保存的数据会被移除。')
+          }
+        }
+        .width('100%')
+        .backgroundColor(AppColors.SURFACE)
+        .borderRadius(28)
+
+        Column() {
+          this.accordionHeader('使用提示', this.disclaimerExpanded, () => {
+            this.disclaimerExpanded = !this.disclaimerExpanded;
+          })
+          if (this.disclaimerExpanded) {
+            this.paragraphContent('健康免责声明',
+              '本应用用于展示兼容心率设备提供的数据，不属于医疗器械，不能替代专业医疗诊断、治疗或急救判断。如出现胸痛、头晕、呼吸困难、持续心率异常等情况，请及时停止活动并寻求专业医疗帮助。')
+          }
+        }
+        .width('100%')
+        .backgroundColor(AppColors.SURFACE)
+        .borderRadius(28)
+
+        Column() {
+          this.accordionHeader('协议与服务', this.serviceExpanded, () => {
+            this.serviceExpanded = !this.serviceExpanded;
+          })
+          if (this.serviceExpanded) {
+            this.aboutRow('协', '用户协议', '使用本应用即表示你理解并接受应用功能边界、健康免责声明和服务规则')
+            Divider().color(AppColors.DIVIDER).margin({ left: 72 })
+            this.aboutRow('私', '隐私政策', '心率数据默认本机处理，不主动上传到远程服务器')
+            Divider().color(AppColors.DIVIDER).margin({ left: 72 })
+            this.aboutRow('权', '版权声明', '本应用为闭源商业软件，未经许可不得复制、修改、反编译或再分发')
+            Divider().color(AppColors.DIVIDER).margin({ left: 72 })
+            this.aboutRow('馈', '反馈渠道', '可通过华为应用市场评论与反馈渠道联系开发者')
+          }
+        }
+        .width('100%')
+        .backgroundColor(AppColors.SURFACE)
+        .borderRadius(28)
+
+        Text('Copyright © 2026 Jax Yin. All rights reserved.')
+          .fontSize(12)
+          .fontColor(AppColors.TEXT_MUTED)
+          .textAlign(TextAlign.Center)
+          .width('100%')
+          .padding({ top: 8 })
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 18, bottom: 94 })
