@@ -8,8 +8,31 @@ export struct HomePage {
   onOpenFullScreen: () => void = () => {};
   onDisconnect: () => void = () => {};
 
-  private availableBluetoothCount(): number {
-    return this.state.devices.length;
+  private bpmText(): string {
+    return this.state.connected ? this.state.bpm.toString() : '--';
+  }
+
+  private connectionLabel(): string {
+    if (this.state.connected) {
+      return '已连接 ' + this.state.deviceName;
+    }
+    if (this.state.scanning) {
+      return '正在搜索附近设备';
+    }
+    if (this.state.failed) {
+      return '连接失败，点击重试';
+    }
+    return '等待选择蓝牙设备';
+  }
+
+  private connectionHint(): string {
+    if (this.state.connected) {
+      return '实时心率正在更新';
+    }
+    if (this.state.scanning) {
+      return '扫描完成后可直接连接';
+    }
+    return '先连接设备，首页会自动变成实时监测面板';
   }
 
   private chartPath(): string {
@@ -34,44 +57,93 @@ export struct HomePage {
   }
 
   @Builder
-  private heartRateCard() {
-    Stack({ alignContent: Alignment.Center }) {
-      Text('♥')
-        .fontSize(132)
-        .fontColor(AppColors.HEART_SOFT)
-        .opacity(0.9)
+  private statTile(title: string, value: string, hint: string) {
+    Column({ space: 4 }) {
+      Text(title)
+        .fontSize(12)
+        .fontColor(AppColors.TEXT_MUTED)
+      Text(value)
+        .fontSize(20)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(AppColors.TEXT)
+      Text(hint)
+        .fontSize(12)
+        .fontColor(AppColors.TEXT_MUTED)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+    }
+    .layoutWeight(1)
+    .padding(14)
+    .backgroundColor(AppColors.SURFACE)
+    .borderRadius(22)
+  }
 
-      Row({ space: 5 }) {
-        Text(this.state.connected ? this.state.bpm.toString() : '--')
-          .fontSize(62)
+  @Builder
+  private heartRateCard() {
+    Column({ space: 12 }) {
+      Row() {
+        Column({ space: 6 }) {
+          Text('实时心率')
+            .fontSize(14)
+            .fontColor(AppColors.TEXT_MUTED)
+          Row({ space: 8 }) {
+            Text('♥')
+              .fontSize(20)
+              .fontColor(this.state.connected ? AppColors.HEART : AppColors.TEXT_MUTED)
+            Text(this.connectionLabel())
+              .fontSize(17)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(AppColors.TEXT)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+          }
+        }
+        .layoutWeight(1)
+        Blank()
+        Text(this.state.connected ? '监测中' : '待连接')
+          .fontSize(12)
           .fontWeight(FontWeight.Medium)
-          .fontColor(AppColors.TEXT)
-        Text('bpm')
-          .fontSize(18)
-          .fontColor(AppColors.TEXT)
-          .alignSelf(ItemAlign.End)
-          .margin({ bottom: 16 })
+          .fontColor(this.state.connected ? AppColors.PRIMARY : AppColors.TEXT_MUTED)
+          .padding({ left: 10, right: 10, top: 5, bottom: 5 })
+          .backgroundColor(this.state.connected ? AppColors.PRIMARY_SOFT : AppColors.SURFACE_STRONG)
+          .borderRadius(12)
       }
 
-      Text(this.state.connected && this.state.maxBpm > 0 ? 'MAX ' + this.state.maxBpm.toString() : 'MAX --')
-        .fontSize(15)
+      Row({ space: 8 }) {
+        Text(this.bpmText())
+          .fontSize(58)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.state.connected ? AppColors.HEART : AppColors.TEXT)
+        Text('bpm')
+          .fontSize(18)
+          .fontColor(AppColors.TEXT_MUTED)
+          .alignSelf(ItemAlign.End)
+          .margin({ bottom: 14 })
+      }
+
+      Text(this.connectionHint())
+        .fontSize(13)
         .fontColor(AppColors.TEXT_MUTED)
-        .position({ right: 14, top: 14 })
-      Text(this.state.connected && this.state.minBpm > 0 ? 'MIN ' + this.state.minBpm.toString() : 'MIN --')
-        .fontSize(15)
-        .fontColor(AppColors.TEXT_MUTED)
-        .position({ right: 14, bottom: 14 })
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+      Row({ space: 10 }) {
+        this.statTile('最高', this.state.maxBpm > 0 ? this.state.maxBpm.toString() + ' bpm' : '--', '本次连接峰值')
+        this.statTile('最低', this.state.minBpm > 0 ? this.state.minBpm.toString() + ' bpm' : '--', '本次连接谷值')
+      }
     }
-    .height(168)
+    .height(292)
     .layoutWeight(1)
+    .padding(18)
     .backgroundColor(AppColors.SURFACE)
     .borderRadius(28)
+    .shadow({ radius: 12, color: '#12000000', offsetY: 3 })
   }
 
   @Builder
   private speedCard() {
     Column() {
-      Text('速度')
+      Text('GPS 速度')
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
         .fontColor(AppColors.TEXT)
@@ -89,10 +161,11 @@ export struct HomePage {
         .textAlign(TextAlign.End)
     }
     .width(116)
-    .height(168)
+    .height(292)
     .padding(16)
     .backgroundColor(AppColors.SURFACE)
     .borderRadius(28)
+    .shadow({ radius: 12, color: '#12000000', offsetY: 3 })
   }
 
   @Builder
@@ -119,19 +192,32 @@ export struct HomePage {
           .color('#CBCBD2')
           .lineCap(LineCapStyle.Round)
       }
-      .height(158)
-      .padding({ left: 34, right: 10, top: 12, bottom: 10 })
+      .height(140)
+      .padding({ left: 38, right: 10, top: 10, bottom: 2 })
 
-      Row() {
-        Text('100\n\n90\n\n80\n\n70')
+      Column() {
+        Text('100')
           .fontSize(11)
-          .lineHeight(36)
           .fontColor(AppColors.TEXT_MUTED)
-        Blank()
+        Text('90')
+          .fontSize(11)
+          .fontColor(AppColors.TEXT_MUTED)
+        Text('80')
+          .fontSize(11)
+          .fontColor(AppColors.TEXT_MUTED)
+        Text('70')
+          .fontSize(11)
+          .fontColor(AppColors.TEXT_MUTED)
       }
-      .width('100%')
-      .height(158)
-      .padding({ left: 8, top: 5 })
+      .width(30)
+      .height(136)
+      .justifyContent(FlexAlign.SpaceBetween)
+      .position({ left: 6, top: 6 })
+
+      Text('bpm')
+        .fontSize(11)
+        .fontColor(AppColors.TEXT_MUTED)
+        .position({ left: 6, top: 148 })
 
       Path()
         .commands(this.chartPath())
@@ -147,10 +233,13 @@ export struct HomePage {
         .position({ left: 48, top: 39 })
     }
     .width('100%')
-    .height(158)
-    .padding(8)
+    .height(198)
+    .padding(12)
     .backgroundColor(AppColors.SURFACE)
     .borderRadius(28)
+    .clip(true)
+    .margin({ top: 4, bottom: 8 })
+    .shadow({ radius: 12, color: '#12000000', offsetY: 3 })
   }
 
   @Builder
@@ -167,59 +256,59 @@ export struct HomePage {
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
       Text('›')
-        .fontSize(28)
+        .fontSize(26)
         .fontColor(color)
+        .width(32)
+        .height(32)
+        .textAlign(TextAlign.Center)
+        .backgroundColor(AppColors.WHITE)
+        .borderRadius(16)
     }
     .width('100%')
-    .height(54)
-    .padding({ left: 16, right: 16 })
+    .height(60)
+    .padding({ left: 16, right: 14 })
     .backgroundColor(background)
-    .borderRadius(27)
+    .borderRadius(20)
     .onClick(onClick)
   }
 
   build() {
     Scroll() {
       Column({ space: 14 }) {
-        Row() {
-          Text('心率监控器')
-            .fontSize(28)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(AppColors.TEXT)
-          Blank()
-          Row({ space: 6 }) {
-            Text('♥')
-              .fontSize(30)
-              .fontColor(this.state.connected ? AppColors.HEART : AppColors.TEXT_MUTED)
-            Text(this.state.connected ? this.state.bpm.toString() : '--')
-              .fontSize(28)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.state.connected ? AppColors.HEART : AppColors.TEXT_MUTED)
+        Column({ space: 8 }) {
+          Row() {
+            Column({ space: 4 }) {
+              Text('心率监控器')
+                .fontSize(30)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(AppColors.TEXT)
+              Text('实时监测运动与训练状态')
+                .fontSize(13)
+                .fontColor(AppColors.TEXT_MUTED)
+            }
+            .layoutWeight(1)
+            Blank()
+            Text(this.state.connected ? '实时' : '待机')
+              .fontSize(12)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.state.connected ? AppColors.WHITE : AppColors.TEXT_MUTED)
+              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+              .backgroundColor(this.state.connected ? AppColors.PRIMARY : AppColors.SURFACE_STRONG)
+              .borderRadius(14)
           }
-          Text('↗')
-            .fontSize(25)
-            .fontColor(AppColors.WHITE)
-            .width(46)
-            .height(46)
-            .textAlign(TextAlign.Center)
-            .backgroundColor(AppColors.PRIMARY)
-            .borderRadius(23)
-            .margin({ left: 10 })
         }
-        .width('100%')
-        .alignItems(VerticalAlign.Center)
 
         Row({ space: 10 }) {
           this.heartRateCard()
           this.speedCard()
         }
         .width('100%')
+        .margin({ bottom: 6 })
 
         this.realtimeChart()
 
         this.actionRow('⌁', this.state.connected ? '已连接设备 ' + this.state.deviceName :
-          (this.state.scanning ? '正在扫描蓝牙设备' :
-            (this.availableBluetoothCount() > 0 ? '发现 ' + this.availableBluetoothCount().toString() + ' 台蓝牙设备' : '可用蓝牙设备')),
+          (this.state.scanning ? '正在扫描蓝牙设备' : '连接蓝牙设备'),
           AppColors.SURFACE,
           AppColors.TEXT, this.onOpenDevices)
 
