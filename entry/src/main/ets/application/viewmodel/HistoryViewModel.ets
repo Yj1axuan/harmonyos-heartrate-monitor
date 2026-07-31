@@ -81,6 +81,18 @@ export class HistoryViewModel {
     await this.preferencesPort.saveFavoriteDevices(this.favoriteDevices);
   }
 
+  async setPrimaryFavoriteDevice(deviceId: string): Promise<void> {
+    const index = this.favoriteDevices.findIndex((device: FavoriteDevice) => device.id === deviceId);
+    if (index <= 0) {
+      return;
+    }
+    const devices = this.favoriteDevices.slice();
+    const primaryDevice = devices[index];
+    devices.splice(index, 1);
+    this.favoriteDevices = [primaryDevice].concat(devices);
+    await this.preferencesPort.saveFavoriteDevices(this.favoriteDevices);
+  }
+
   async addFavoriteDevice(device: FavoriteDevice): Promise<void> {
     const exists = this.favoriteDevices.findIndex((item: FavoriteDevice) => item.id === device.id) >= 0;
     if (!exists) {

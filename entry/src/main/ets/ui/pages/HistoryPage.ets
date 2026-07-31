@@ -273,6 +273,7 @@ export struct HistoryPage {
 export struct FavoritePage {
   @Prop devices: FavoriteDevice[] = [];
   onRemove: (deviceId: string) => void = (_deviceId: string) => {};
+  onMakePrimary: (deviceId: string) => void = (_deviceId: string) => {};
 
   @Builder
   private deleteAction(device: FavoriteDevice) {
@@ -331,6 +332,11 @@ export struct FavoritePage {
       .padding({ left: 14, right: 16 })
       .backgroundColor(AppColors.SURFACE)
       .borderRadius(28)
+      .onClick(() => {
+        if (!primary) {
+          this.onMakePrimary(device.id);
+        }
+      })
     }
     .width('100%')
     .swipeAction({
@@ -356,7 +362,7 @@ export struct FavoritePage {
       .margin({ bottom: 8 })
 
       if (this.devices.length > 0) {
-        Text('向右滑动设备条目可显示删除按钮，点击删除后才会移除')
+        Text('点击设备可设为启动自动连接首选；向右滑动可删除')
           .fontSize(13)
           .fontColor(AppColors.TEXT_MUTED)
           .width('100%')
@@ -386,7 +392,7 @@ export struct FavoritePage {
       }
 
       if (this.devices.length > 0) {
-        Text('收藏设备会显示在扫描结果顶部，并可用于启动时自动连接。')
+        Text('列表第一台设备会作为“启动时连接收藏设备”的首选目标。')
           .fontSize(13)
           .fontColor(AppColors.TEXT_MUTED)
           .padding({ left: 8, right: 8, top: 8 })

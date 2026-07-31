@@ -46,6 +46,7 @@ struct Index {
     this.syncSettingsState();
     await this.historyViewModel.load();
     this.syncHistoryState();
+    this.ensureAutoConnectHasFavoriteDevice();
     if (this.settingsState.autoConnect && this.historyViewModel.favoriteDevices.length > 0) {
       const favorite = this.historyViewModel.favoriteDevices[0];
       await this.heartRateViewModel.connectDevice({
@@ -84,6 +85,19 @@ struct Index {
   private async removeFavoriteDevice(deviceId: string): Promise<void> {
     await this.historyViewModel.removeFavoriteDevice(deviceId);
     this.syncHistoryState();
+    this.ensureAutoConnectHasFavoriteDevice();
+  }
+
+  private async setPrimaryFavoriteDevice(deviceId: string): Promise<void> {
+    await this.historyViewModel.setPrimaryFavoriteDevice(deviceId);
+    this.syncHistoryState();
+  }
+
+  private ensureAutoConnectHasFavoriteDevice(): void {
+    if (this.favoriteDevices.length === 0 && this.settingsState.autoConnect) {
+      this.settingsViewModel.setAutoConnect(false);
+      this.syncSettingsState();
+    }
   }
 
   private syncSettingsState(): void {
@@ -310,12 +324,18 @@ struct Index {
             devices: this.favoriteDevices,
             onRemove: (deviceId: string) => {
               void this.removeFavoriteDevice(deviceId);
+            },
+            onMakePrimary: (deviceId: string) => {
+              void this.setPrimaryFavoriteDevice(deviceId);
             }
           })
         } else {
           SettingsPage({
             state: this.settingsState,
             showFullscreenModeEntry: this.heartRateState.connected,
+            connectedDeviceName: this.heartRateState.connected ? this.heartRateState.deviceName : '',
+            favoriteDeviceCount: this.favoriteDevices.length,
+            primaryFavoriteDeviceName: this.favoriteDevices.length > 0 ? this.favoriteDevices[0].name : '',
             onOpenFullScreen: () => {
               void this.enterFullScreen();
             },
@@ -344,6 +364,15 @@ struct Index {
             },
             onOpenAbout: () => {
               this.showAbout = true;
+            },
+            onOpenDevices: () => {
+              this.showDevices = true;
+              if (this.heartRateState.devices.length === 0) {
+                this.heartRateViewModel.loadKnownDevices();
+              }
+            },
+            onOpenFavorites: () => {
+              this.selectedTab = 2;
             }
           })
         }

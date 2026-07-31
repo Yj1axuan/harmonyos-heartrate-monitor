@@ -36,7 +36,7 @@ const FULLSCREEN_DISPLAY_COLOR_OPTIONS: FullscreenDisplayColorOption[] = [
 struct SettingSwitchRow {
   icon: string = '•';
   title: string = '';
-  subtitle: string = '';
+  @Prop subtitle: string = '';
   @Prop checked: boolean = false;
   @Prop rowEnabled: boolean = true;
   onChange: (value: boolean) => void = (_value: boolean) => {};
@@ -66,6 +66,7 @@ struct SettingSwitchRow {
       .alignItems(HorizontalAlign.Start)
       Toggle({ type: ToggleType.Switch, isOn: this.checked })
         .selectedColor(AppColors.PRIMARY)
+        .enabled(this.rowEnabled)
         .onChange((value: boolean) => {
           if (this.rowEnabled) {
             this.onChange(value);
@@ -83,7 +84,7 @@ struct SettingSwitchRow {
 struct SettingLinkRow {
   icon: string = '•';
   title: string = '';
-  subtitle: string = '';
+  @Prop subtitle: string = '';
   onTap: () => void = () => {};
 
   build() {
@@ -246,9 +247,14 @@ struct SettingChoiceRow {
 export struct SettingsPage {
   @ObjectLink state: SettingsUiState;
   showFullscreenModeEntry: boolean = false;
+  connectedDeviceName: string = '';
+  favoriteDeviceCount: number = 0;
+  primaryFavoriteDeviceName: string = '';
   onOpenAbout: () => void = () => {};
   onOpenThemeSettings: () => void = () => {};
   onOpenFullScreen: () => void = () => {};
+  onOpenDevices: () => void = () => {};
+  onOpenFavorites: () => void = () => {};
   onThemeSourceChange: (value: ThemeSource) => void = (_value: ThemeSource) => {};
   onThemeModeChange: (value: ThemeMode) => void = (_value: ThemeMode) => {};
   onThemeColorChange: (value: string) => void = (_value: string) => {};
@@ -361,6 +367,44 @@ export struct SettingsPage {
     }
     return this.state.lowBpmThreshold.toString() + '-' + this.state.highBpmThreshold.toString() +
       ' bpm 外持续 ' + this.state.alertDurationSeconds.toString() + ' 秒后提醒';
+  }
+
+  private connectionStatusLabel(): string {
+    if (this.connectedDeviceName.length > 0) {
+      return '已连接：' + this.connectedDeviceName;
+    }
+    return '未连接，点击扫描或选择设备';
+  }
+
+  private favoriteDevicesSubtitle(): string {
+    if (this.favoriteDeviceCount === 0) {
+      return '暂无收藏，连接成功的设备会自动加入';
+    }
+    return this.favoriteDeviceCount.toString() + ' 台，首选：' + this.primaryFavoriteDeviceName;
+  }
+
+  private autoConnectSubtitle(): string {
+    if (this.favoriteDeviceCount === 0) {
+      return '需先连接设备加入收藏后才能启用';
+    }
+    if (this.state.autoConnect) {
+      return '启动后自动连接：' + this.primaryFavoriteDeviceName;
+    }
+    return '关闭后启动时不自动连接设备';
+  }
+
+  private autoReconnectSubtitle(): string {
+    if (this.state.autoReconnect) {
+      return '连接意外断开后自动尝试重连';
+    }
+    return '断开后保持未连接状态';
+  }
+
+  private backgroundMonitoringSubtitle(): string {
+    if (this.state.backgroundMonitoring) {
+      return '连接后申请后台运行，便于持续监测';
+    }
+    return '离开前台后不主动维持后台监测';
   }
 
   @Builder
@@ -668,13 +712,25 @@ export struct SettingsPage {
 
         this.sectionTitle('设备连接')
         Column() {
-          SettingSwitchRow({ icon: '☑', title: '启动时连接收藏设备', subtitle: '启动应用后自动连接首选设备',
-            checked: this.state.autoConnect, onChange: (value: boolean) => { this.onAutoConnectChange(value); } })
+          SettingLinkRow({ icon: '⌁', title: '当前连接', subtitle: this.connectionStatusLabel(),
+            onTap: () => { this.onOpenDevices(); } })
           this.line()
-          SettingSwitchRow({ icon: '↻', title: '断开后自动重连', subtitle: '连接断开后自动尝试重新连接',
+          SettingLinkRow({ icon: '☆', title: '收藏设备', subtitle: this.favoriteDevicesSubtitle(),
+            onTap: () => { this.onOpenFavorites(); } })
+          this.line()
+          SettingSwitchRow({ icon: '☑', title: '启动时连接收藏设备', subtitle: this.autoConnectSubtitle(),
+            checked: this.state.autoConnect,
+            rowEnabled: this.favoriteDeviceCount > 0,
+            onChange: (value: boolean) => {
+              if (this.favoriteDeviceCount > 0) {
+                this.onAutoConnectChange(value);
+              }
+            } })
+          this.line()
+          SettingSwitchRow({ icon: '↻', title: '断开后自动重连', subtitle: this.autoReconnectSubtitle(),
             checked: this.state.autoReconnect, onChange: (value: boolean) => { this.onAutoReconnectChange(value); } })
           this.line()
-          SettingSwitchRow({ icon: '☁', title: '后台监测', subtitle: '连接后允许后台连续监测',
+          SettingSwitchRow({ icon: '☁', title: '后台监测', subtitle: this.backgroundMonitoringSubtitle(),
             checked: this.state.backgroundMonitoring, onChange: (value: boolean) => { this.onBackgroundMonitoringChange(value); } })
         }
         .width('100%')
@@ -1151,7 +1207,7 @@ export struct AboutPage {
             this.appInfoExpanded = !this.appInfoExpanded;
           })
           if (this.appInfoExpanded) {
-            this.aboutRow('版', '版本', '1.0.0', 'versionCode 1000000')
+            this.aboutRow('版', '版本', '1.0.0',)
             Divider().color(AppColors.DIVIDER).margin({ left: 72 })
             this.aboutRow('者', '开发者', 'Jax Yin')
             Divider().color(AppColors.DIVIDER).margin({ left: 72 })
@@ -1235,7 +1291,7 @@ export struct AboutPage {
             Divider().color(AppColors.DIVIDER).margin({ left: 72 })
             this.aboutRow('私', '隐私政策', '心率数据默认本机处理，不主动上传到远程服务器')
             Divider().color(AppColors.DIVIDER).margin({ left: 72 })
-            this.aboutRow('权', '版权声明', '本应用为闭源商业软件，未经许可不得复制、修改、反编译或再分发')
+            this.aboutRow('权', '版权声明', '本应用未经许可不得复制、修改、反编译或再分发')
             Divider().color(AppColors.DIVIDER).margin({ left: 72 })
             this.aboutRow('馈', '反馈渠道', '可通过华为应用市场评论与反馈渠道联系开发者')
           }
