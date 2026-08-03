@@ -131,6 +131,7 @@ export class HarmonyHeartRateRepository implements HeartRateRepository {
       await this.startBackgroundMonitoringIfNeeded();
       this.updateSnapshot(MonitoringState.Connected, this.snapshot.bpm, device.id, device.name);
     } catch (error) {
+      await this.cleanupFailedConnection();
       this.updateSnapshot(MonitoringState.Failed, 0, '', '');
       throw error instanceof Error ? error : new Error(String(error));
     }
@@ -273,6 +274,7 @@ export class HarmonyHeartRateRepository implements HeartRateRepository {
       await this.startBackgroundMonitoringIfNeeded();
       this.updateSnapshot(MonitoringState.Connected, 0, device.id, device.name);
     } catch (_error) {
+      await this.cleanupFailedConnection();
       this.updateSnapshot(MonitoringState.Idle, 0, '', '');
     } finally {
       this.reconnecting = false;
@@ -298,6 +300,25 @@ export class HarmonyHeartRateRepository implements HeartRateRepository {
       return;
     }
     await this.alertPort.stopBackgroundMonitoring(this.appContext);
+  }
+
+  private async cleanupFailedConnection(): Promise<void> {
+    this.lastConnectedDevice = undefined;
+    try {
+      await this.closeCurrentSession();
+    } catch (_error) {
+      this.currentSessionId = 0;
+    }
+    this.pendingRecords = [];
+    this.resetAlertState();
+    try {
+      await this.blePort.disconnect();
+    } catch (_error) {
+    }
+    try {
+      await this.stopBackgroundMonitoring();
+    } catch (_error) {
+    }
   }
 
   private evaluateAlert(bpm: number, timestamp: number): void {

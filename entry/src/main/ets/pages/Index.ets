@@ -284,6 +284,7 @@ struct Index {
         if (this.selectedTab === 0) {
           HomePage({
             state: this.heartRateState,
+            showSpeed: this.settingsState.displaySpeed,
             onOpenDevices: () => {
               this.showDevices = true;
               if (this.heartRateState.devices.length === 0) {

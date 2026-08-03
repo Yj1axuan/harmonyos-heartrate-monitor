@@ -4,6 +4,7 @@ import { HeartRateUiState } from '../../application/state/HeartRateUiState';
 @Component
 export struct HomePage {
   @ObjectLink state: HeartRateUiState;
+  showSpeed: boolean = false;
   onOpenDevices: () => void = () => {};
   onOpenFullScreen: () => void = () => {};
   onDisconnect: () => void = () => {};
@@ -73,9 +74,10 @@ export struct HomePage {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
     }
     .layoutWeight(1)
-    .padding(14)
-    .backgroundColor(AppColors.SURFACE)
-    .borderRadius(22)
+    .constraintSize({ minHeight: 82 })
+    .padding({ left: 12, right: 12, top: 12, bottom: 12 })
+    .backgroundColor(AppColors.SURFACE_STRONG)
+    .borderRadius(18)
   }
 
   @Builder
@@ -132,9 +134,9 @@ export struct HomePage {
         this.statTile('最低', this.state.minBpm > 0 ? this.state.minBpm.toString() + ' bpm' : '--', '本次连接谷值')
       }
     }
-    .height(292)
-    .layoutWeight(1)
-    .padding(18)
+    .width('100%')
+    .constraintSize({ minHeight: 268 })
+    .padding(20)
     .backgroundColor(AppColors.SURFACE)
     .borderRadius(28)
     .shadow({ radius: 12, color: '#12000000', offsetY: 3 })
@@ -142,30 +144,44 @@ export struct HomePage {
 
   @Builder
   private speedCard() {
-    Column() {
-      Text('GPS 速度')
-        .fontSize(16)
+    Row({ space: 12 }) {
+      Text('GPS')
+        .fontSize(13)
         .fontWeight(FontWeight.Medium)
-        .fontColor(AppColors.TEXT)
-        .width('100%')
-      Blank()
+        .fontColor(AppColors.PRIMARY)
+        .width(48)
+        .height(48)
+        .textAlign(TextAlign.Center)
+        .backgroundColor(AppColors.PRIMARY_SOFT)
+        .borderRadius(24)
+      Column({ space: 3 }) {
+        Text('速度')
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(AppColors.TEXT)
+        Text('等待定位或速度数据')
+          .fontSize(12)
+          .fontColor(AppColors.TEXT_MUTED)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
       Text('--')
-        .fontSize(36)
+        .fontSize(24)
         .fontWeight(FontWeight.Medium)
         .fontColor(AppColors.TEXT)
-      Blank()
       Text('km/h')
-        .fontSize(15)
+        .fontSize(12)
         .fontColor(AppColors.TEXT_MUTED)
-        .width('100%')
-        .textAlign(TextAlign.End)
+        .alignSelf(ItemAlign.End)
+        .margin({ bottom: 5 })
     }
-    .width(116)
-    .height(292)
-    .padding(16)
+    .width('100%')
+    .height(72)
+    .padding({ left: 14, right: 16 })
     .backgroundColor(AppColors.SURFACE)
-    .borderRadius(28)
-    .shadow({ radius: 12, color: '#12000000', offsetY: 3 })
+    .borderRadius(24)
   }
 
   @Builder
@@ -174,22 +190,22 @@ export struct HomePage {
       Column() {
         Divider()
           .strokeWidth(1)
-          .color('#CBCBD2')
+          .color(AppColors.DIVIDER)
           .lineCap(LineCapStyle.Round)
         Blank()
         Divider()
           .strokeWidth(1)
-          .color('#CBCBD2')
+          .color(AppColors.DIVIDER)
           .lineCap(LineCapStyle.Round)
         Blank()
         Divider()
           .strokeWidth(1)
-          .color('#CBCBD2')
+          .color(AppColors.DIVIDER)
           .lineCap(LineCapStyle.Round)
         Blank()
         Divider()
           .strokeWidth(1)
-          .color('#CBCBD2')
+          .color(AppColors.DIVIDER)
           .lineCap(LineCapStyle.Round)
       }
       .height(140)
@@ -231,6 +247,21 @@ export struct HomePage {
         .fontSize(12)
         .fontColor(this.state.connected && this.state.maxBpm > 0 ? AppColors.HEART : AppColors.TEXT_MUTED)
         .position({ left: 48, top: 39 })
+
+      if (!this.state.connected || this.state.samples.length === 0) {
+        Column({ space: 6 }) {
+          Text('趋势图待命')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(AppColors.TEXT)
+          Text('连接设备后显示实时心率曲线')
+            .fontSize(12)
+            .fontColor(AppColors.TEXT_MUTED)
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
+      }
     }
     .width('100%')
     .height(198)
@@ -298,14 +329,13 @@ export struct HomePage {
           }
         }
 
-        Row({ space: 10 }) {
-          this.heartRateCard()
-          this.speedCard()
-        }
-        .width('100%')
-        .margin({ bottom: 6 })
+        this.heartRateCard()
 
         this.realtimeChart()
+
+        if (this.showSpeed) {
+          this.speedCard()
+        }
 
         this.actionRow('⌁', this.state.connected ? '已连接设备 ' + this.state.deviceName :
           (this.state.scanning ? '正在扫描蓝牙设备' : '连接蓝牙设备'),

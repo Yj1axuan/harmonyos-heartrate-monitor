@@ -3,6 +3,7 @@ import { AppPreferencesPort } from '../../domain/port/AppPreferencesPort';
 
 export class SettingsViewModel {
   readonly state: SettingsUiState = new SettingsUiState();
+  private static readonly SPEED_DISPLAY_AVAILABLE: boolean = false;
   private preferencesPort: AppPreferencesPort | undefined = undefined;
   private onSettingsChanged: (settings: SettingsUiState) => void = (_settings: SettingsUiState) => {};
 
@@ -24,7 +25,7 @@ export class SettingsViewModel {
     this.state.themeStyle = settings.themeStyle;
     this.state.recordHistory = settings.recordHistory;
     this.state.heartbeatAnimation = settings.heartbeatAnimation;
-    this.state.displaySpeed = settings.displaySpeed;
+    this.state.displaySpeed = SettingsViewModel.SPEED_DISPLAY_AVAILABLE && settings.displaySpeed;
     this.state.hideFromRecents = settings.hideFromRecents;
     this.state.autoConnect = settings.autoConnect;
     this.state.autoReconnect = settings.autoReconnect;
@@ -72,7 +73,7 @@ export class SettingsViewModel {
   }
 
   setDisplaySpeed(value: boolean): void {
-    this.state.displaySpeed = value;
+    this.state.displaySpeed = SettingsViewModel.SPEED_DISPLAY_AVAILABLE && value;
     this.save();
   }
 

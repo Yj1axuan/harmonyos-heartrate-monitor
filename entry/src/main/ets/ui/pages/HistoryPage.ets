@@ -105,13 +105,13 @@ export struct HistoryPage {
             .fontWeight(FontWeight.Bold)
             .fontColor(AppColors.TEXT)
           Blank()
-          Text('⌕')
+          Text('↻')
             .fontSize(22)
-            .fontColor(AppColors.TEXT)
+            .fontColor(AppColors.PRIMARY)
             .width(42)
             .height(42)
             .textAlign(TextAlign.Center)
-            .backgroundColor(AppColors.SURFACE)
+            .backgroundColor(AppColors.PRIMARY_SOFT)
             .borderRadius(21)
             .onClick(this.onRefresh)
         }
@@ -171,7 +171,15 @@ export struct HistoryPage {
           .scrollBar(BarState.Off)
           .edgeEffect(EdgeEffect.Spring)
         } else {
-          Column({ space: 8 }) {
+          Column({ space: 10 }) {
+            Text('♥')
+              .fontSize(26)
+              .fontColor(AppColors.PRIMARY)
+              .width(54)
+              .height(54)
+              .textAlign(TextAlign.Center)
+              .backgroundColor(AppColors.PRIMARY_SOFT)
+              .borderRadius(27)
             Text('暂无历史记录')
               .fontSize(17)
               .fontWeight(FontWeight.Medium)
@@ -183,6 +191,8 @@ export struct HistoryPage {
           .width('100%')
           .height(180)
           .justifyContent(FlexAlign.Center)
+          .backgroundColor(AppColors.SURFACE)
+          .borderRadius(28)
         }
       }
       .width('100%')
@@ -377,7 +387,15 @@ export struct FavoritePage {
         .scrollBar(BarState.Off)
         .edgeEffect(EdgeEffect.Spring)
       } else {
-        Column({ space: 8 }) {
+        Column({ space: 10 }) {
+          Text('⌁')
+            .fontSize(24)
+            .fontColor(AppColors.PRIMARY)
+            .width(54)
+            .height(54)
+            .textAlign(TextAlign.Center)
+            .backgroundColor(AppColors.PRIMARY_SOFT)
+            .borderRadius(27)
           Text('暂无收藏设备')
             .fontSize(17)
             .fontWeight(FontWeight.Medium)
@@ -389,6 +407,8 @@ export struct FavoritePage {
         .width('100%')
         .height(160)
         .justifyContent(FlexAlign.Center)
+        .backgroundColor(AppColors.SURFACE)
+        .borderRadius(28)
       }
 
       if (this.devices.length > 0) {

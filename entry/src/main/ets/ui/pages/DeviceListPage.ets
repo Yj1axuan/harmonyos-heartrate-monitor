@@ -25,6 +25,9 @@ export struct DeviceListPage {
     if (this.state.connected && this.state.deviceId === device.id) {
       return '已连接';
     }
+    if (device.deviceKind === 'heart-rate') {
+      return '标准心率';
+    }
     if (device.rssi === -126) {
       return '已发现';
     }
@@ -39,6 +42,12 @@ export struct DeviceListPage {
   }
 
   private deviceIcon(device: HeartRateDevice): string {
+    if (device.deviceKind === 'heart-rate') {
+      return '♥';
+    }
+    if (device.deviceKind === 'band') {
+      return '▱';
+    }
     if (device.deviceKind === 'phone') {
       return '📱';
     }
@@ -81,6 +90,9 @@ export struct DeviceListPage {
       Text(this.deviceStatus(device))
         .fontSize(12)
         .fontColor(AppColors.TEXT_MUTED)
+        .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+        .backgroundColor(AppColors.SURFACE_STRONG)
+        .borderRadius(12)
     }
     .width('100%')
     .height(68)
@@ -161,7 +173,7 @@ export struct DeviceListPage {
           .fontColor(AppColors.TEXT)
           .placeholderColor(AppColors.TEXT_MUTED)
           .backgroundColor(AppColors.SURFACE)
-          .borderRadius(8)
+          .borderRadius(18)
           .padding({ left: 14, right: 14 })
           .onChange((value: string) => {
             this.searchQuery = value;
@@ -186,12 +198,20 @@ export struct DeviceListPage {
           }
           .width('100%')
           .backgroundColor(AppColors.SURFACE)
-          .borderRadius(16)
+          .borderRadius(24)
         }
         .layoutWeight(1)
         .scrollBar(BarState.Off)
       } else {
         Column({ space: 12 }) {
+          Text(this.state.scanning ? '↻' : '⌁')
+            .fontSize(24)
+            .fontColor(AppColors.PRIMARY)
+            .width(58)
+            .height(58)
+            .textAlign(TextAlign.Center)
+            .backgroundColor(AppColors.PRIMARY_SOFT)
+            .borderRadius(29)
           if (this.searchQuery.trim().length > 0 && this.visibleDevices().length === 0 && this.state.devices.length > 0) {
             Text('未找到匹配设备')
               .fontSize(17)
@@ -225,6 +245,8 @@ export struct DeviceListPage {
         .width('100%')
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
+        .backgroundColor(AppColors.SURFACE)
+        .borderRadius(28)
       }
 
       if (this.state.statusMessage.length > 0) {

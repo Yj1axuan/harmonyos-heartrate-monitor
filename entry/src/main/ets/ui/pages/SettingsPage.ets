@@ -677,8 +677,8 @@ export struct SettingsPage {
           SettingSwitchRow({ icon: '♥', title: '心跳动画效果', subtitle: '显示实时心跳动画',
             checked: this.state.heartbeatAnimation, onChange: (value: boolean) => { this.onHeartbeatAnimationChange(value); } })
           this.line()
-          SettingSwitchRow({ icon: '⌁', title: '显示速度(GPS)', subtitle: '通过 GPS 获取当前移动速度',
-            checked: this.state.displaySpeed, onChange: (value: boolean) => { this.onDisplaySpeedChange(value); } })
+          SettingSwitchRow({ icon: '⌁', title: '显示速度(GPS)', subtitle: '速度数据暂未接入，后续版本开放',
+            checked: false, rowEnabled: false, onChange: (value: boolean) => { this.onDisplaySpeedChange(value); } })
           this.line()
           SettingSwitchRow({ icon: '◌', title: '退出应用隐藏后台卡片', subtitle: '在多任务界面隐藏应用预览',
             checked: this.state.hideFromRecents, onChange: (value: boolean) => { this.onHideFromRecentsChange(value); } })

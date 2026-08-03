@@ -7,9 +7,12 @@ import wantAgent from '@ohos.app.ability.wantAgent';
 import audio from '@ohos.multimedia.audio';
 import { SettingsUiState } from '../../application/state/SettingsUiState';
 import { HeartRateAlertEvent, HeartRateAlertType, HeartRateBackgroundMonitorPort } from '../../domain/port/HeartRateAlertPort';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 
 const ALERT_NOTIFICATION_ID = 18037;
 const BACKGROUND_REQUEST_CODE = 18038;
+const DOMAIN = 0x0000;
+const TAG = 'HeartRate.Alert';
 
 export class HarmonyHeartRateAlertAdapter implements HeartRateBackgroundMonitorPort {
   private backgroundRunning: boolean = false;
@@ -19,7 +22,8 @@ export class HarmonyHeartRateAlertAdapter implements HeartRateBackgroundMonitorP
     try {
       await notificationManager.requestEnableNotification();
       await notificationManager.addSlot(notificationManager.SlotType.SERVICE_INFORMATION);
-    } catch (_error) {
+    } catch (error) {
+      this.logError('Failed to request notification permission', error);
     }
   }
 
@@ -35,8 +39,9 @@ export class HarmonyHeartRateAlertAdapter implements HeartRateBackgroundMonitorP
         agent
       );
       this.backgroundRunning = true;
-    } catch (_error) {
+    } catch (error) {
       this.backgroundRunning = false;
+      this.logError('Failed to start background monitoring', error);
     }
   }
 
@@ -46,7 +51,8 @@ export class HarmonyHeartRateAlertAdapter implements HeartRateBackgroundMonitorP
     }
     try {
       await backgroundTaskManager.stopBackgroundRunning(context);
-    } catch (_error) {
+    } catch (error) {
+      this.logError('Failed to stop background monitoring', error);
     }
     this.backgroundRunning = false;
   }
@@ -98,7 +104,8 @@ export class HarmonyHeartRateAlertAdapter implements HeartRateBackgroundMonitorP
         }
       };
       await notificationManager.publish(request);
-    } catch (_error) {
+    } catch (error) {
+      this.logError('Failed to publish heart rate alert notification', error);
     }
   }
 
@@ -147,7 +154,8 @@ export class HarmonyHeartRateAlertAdapter implements HeartRateBackgroundMonitorP
       await renderer.write(buffer);
       await renderer.stop();
       await renderer.release();
-    } catch (_error) {
+    } catch (error) {
+      this.logError('Failed to play heart rate alert sound', error);
     } finally {
       this.soundPlaying = false;
     }
@@ -164,7 +172,12 @@ export class HarmonyHeartRateAlertAdapter implements HeartRateBackgroundMonitorP
           usage: 'alarm'
         }
       );
-    } catch (_error) {
+    } catch (error) {
+      this.logError('Failed to vibrate for heart rate alert', error);
     }
+  }
+
+  private logError(message: string, error: Object): void {
+    hilog.error(DOMAIN, TAG, '%{public}s: %{public}s', message, JSON.stringify(error));
   }
 }

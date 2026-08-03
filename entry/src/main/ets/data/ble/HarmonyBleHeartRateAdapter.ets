@@ -12,6 +12,7 @@ import {
 export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
   private static readonly CONNECTION_TIMEOUT_MS: number = 12000;
   private static readonly HEART_RATE_SERVICE_UUID: string = '180d';
+  private static readonly HEART_RATE_SERVICE_UUID_REVERSED: string = '0d18';
   private static readonly HEART_RATE_MEASUREMENT_UUID: string = '2a37';
   private static readonly MAJOR_COMPUTER: number = 0x0100;
   private static readonly MAJOR_PHONE: number = 0x0200;
@@ -33,13 +34,16 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
 
   private scanCallback = (results: Array<ble.ScanResult>): void => {
     results.forEach((result: ble.ScanResult) => {
+      const deviceName = this.resolveDeviceName(result);
+      const advertisesHeartRate = this.advertisesHeartRateService(result.data);
       const device: HeartRateDevice = {
         id: result.deviceId,
-        name: this.resolveDeviceName(result),
+        name: deviceName.length > 0 ? deviceName :
+          (advertisesHeartRate ? this.createHeartRateFallbackName(result.deviceId) : ''),
         rssi: result.rssi,
-        deviceKind: this.resolveDeviceKind(result.deviceId)
+        deviceKind: advertisesHeartRate ? 'heart-rate' : this.resolveBleDeviceKind(result.deviceId, deviceName)
       };
-      this.addOrUpdateDevice(device);
+      this.addOrUpdateDevice(device, advertisesHeartRate || this.isLikelySupportedWearable(device.name));
       this.refreshDeviceName(result.deviceId);
     });
     this.deviceListener(this.devices.slice());
@@ -49,12 +53,13 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
     results.forEach((result: connection.DiscoveryResult) => {
       const systemName = this.readKnownDeviceName(result.deviceId);
       const deviceName = systemName.length > 0 ? systemName : this.cleanDeviceName(result.deviceName);
+      const deviceKind = this.resolveDeviceKind(result.deviceId, result.deviceClass);
       this.addOrUpdateDevice({
         id: result.deviceId,
         name: deviceName.length > 0 ? deviceName : this.createClassicFallbackName(result.deviceId, result.deviceClass),
         rssi: result.rssi,
-        deviceKind: this.resolveDeviceKind(result.deviceId, result.deviceClass)
-      });
+        deviceKind: deviceKind
+      }, deviceKind === 'watch' || deviceKind === 'band' || this.isLikelySupportedWearable(deviceName));
     });
     this.deviceListener(this.devices.slice());
   };
@@ -62,12 +67,13 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
   private bluetoothDeviceFindCallback = (deviceIds: Array<string>): void => {
     deviceIds.forEach((deviceId: string) => {
       const deviceName = this.readKnownDeviceName(deviceId);
+      const deviceKind = this.resolveDeviceKind(deviceId);
       this.addOrUpdateDevice({
         id: deviceId,
         name: deviceName.length > 0 ? deviceName : this.createClassicFallbackName(deviceId),
         rssi: -126,
-        deviceKind: this.resolveDeviceKind(deviceId)
-      });
+        deviceKind: deviceKind
+      }, deviceKind === 'watch' || deviceKind === 'band' || this.isLikelySupportedWearable(deviceName));
       this.refreshDeviceName(deviceId);
     });
     this.deviceListener(this.devices.slice());
@@ -296,12 +302,13 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
       const pairedDeviceIds = connection.getPairedDevices();
       pairedDeviceIds.forEach((deviceId: string) => {
         const deviceName = this.readSystemDeviceName(deviceId);
+        const deviceKind = this.resolveDeviceKind(deviceId);
         this.addOrUpdateDevice({
           id: deviceId,
           name: deviceName.length > 0 ? deviceName : this.createClassicFallbackName(deviceId),
           rssi: -128,
-          deviceKind: this.resolveDeviceKind(deviceId)
-        });
+          deviceKind: deviceKind
+        }, deviceKind === 'watch' || deviceKind === 'band' || this.isLikelySupportedWearable(deviceName));
       });
     } catch (_error) {
     }
@@ -314,12 +321,13 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
     const connectedDeviceIds = ble.getConnectedBLEDevices();
     connectedDeviceIds.forEach((deviceId: string) => {
       const deviceName = this.readKnownDeviceName(deviceId);
+      const deviceKind = this.resolveDeviceKind(deviceId);
       this.addOrUpdateDevice({
         id: deviceId,
         name: deviceName.length > 0 ? deviceName : this.createClassicFallbackName(deviceId),
         rssi: -127,
-        deviceKind: this.resolveDeviceKind(deviceId)
-      });
+        deviceKind: deviceKind
+      }, deviceKind === 'watch' || deviceKind === 'band' || this.isLikelySupportedWearable(deviceName));
       this.refreshDeviceName(deviceId);
     });
     if (notify && this.devices.length > 0) {
@@ -327,7 +335,7 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
     }
   }
 
-  private addOrUpdateDevice(device: HeartRateDevice): void {
+  private addOrUpdateDevice(device: HeartRateDevice, allowFallbackName: boolean = false): void {
     const index = this.devices.findIndex((item: HeartRateDevice) => item.id === device.id);
     if (index >= 0) {
       const current = this.devices[index];
@@ -339,12 +347,12 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
       };
       return;
     }
-    if (!this.isResolvedName(device.id, device.name)) {
+    if (!this.isResolvedName(device.id, device.name) && !allowFallbackName) {
       return;
     }
     this.devices.push({
       id: device.id,
-      name: this.cleanDeviceName(device.name),
+      name: this.safeDisplayName(device),
       rssi: device.rssi,
       deviceKind: device.deviceKind
     });
@@ -391,8 +399,8 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
           id: deviceId,
           name: deviceName,
           rssi: -127,
-          deviceKind: this.resolveDeviceKind(deviceId)
-        });
+          deviceKind: this.resolveBleDeviceKind(deviceId, deviceName)
+        }, this.isLikelySupportedWearable(deviceName));
         this.deviceListener(this.devices.slice());
         return;
       }
@@ -569,6 +577,10 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
     return 'BLE 设备 ' + this.deviceSuffix(deviceId);
   }
 
+  private createHeartRateFallbackName(deviceId: string): string {
+    return '心率设备 ' + this.deviceSuffix(deviceId);
+  }
+
   private createClassicFallbackName(deviceId: string, deviceClass?: connection.DeviceClass): string {
     let currentDeviceClass: connection.DeviceClass | undefined = deviceClass;
     if (currentDeviceClass === undefined) {
@@ -597,6 +609,12 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
   }
 
   private chooseBestDeviceKind(currentKind?: string, nextKind?: string): string {
+    if (currentKind === 'heart-rate' || nextKind === 'heart-rate') {
+      return 'heart-rate';
+    }
+    if (currentKind === 'band' || nextKind === 'band') {
+      return 'band';
+    }
     if (nextKind !== undefined && nextKind.length > 0 && nextKind !== 'ble') {
       return nextKind;
     }
@@ -623,8 +641,8 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
 
   private isFallbackName(deviceId: string, deviceName: string): boolean {
     const suffix = this.deviceSuffix(deviceId);
-    return deviceName === this.createFallbackName(deviceId) || deviceName === '手机设备 ' + suffix ||
-      deviceName === '平板设备 ' + suffix || deviceName === '运动手表 ' + suffix;
+    return deviceName === this.createFallbackName(deviceId) || deviceName === this.createHeartRateFallbackName(deviceId) ||
+      deviceName === '手机设备 ' + suffix || deviceName === '平板设备 ' + suffix || deviceName === '运动手表 ' + suffix;
   }
 
   private readDeviceClass(deviceId: string): connection.DeviceClass | undefined {
@@ -661,6 +679,59 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
     return deviceKind.length > 0 ? deviceKind : 'classic';
   }
 
+  private resolveBleDeviceKind(deviceId: string, deviceName: string): string {
+    const kindByName = this.deviceKindByName(deviceName);
+    if (kindByName.length > 0) {
+      return kindByName;
+    }
+    return this.resolveDeviceKind(deviceId);
+  }
+
+  private deviceKindByName(deviceName: string): string {
+    const name = this.cleanDeviceName(deviceName).toLowerCase();
+    if (name.length === 0) {
+      return '';
+    }
+    if (name.includes('heart') || name.includes('hrm') || name.includes('h10') || name.includes('h9') ||
+      name.includes('h7') || name.includes('oh1') || name.includes('verity') || name.includes('coospo') ||
+      name.includes('magene') || name.includes('wahoo') || name.includes('tickr') || name.includes('polar') ||
+      name.includes('garmin hrm')) {
+      return 'heart-rate';
+    }
+    if (name.includes('band') || name.includes('手环') || name.includes('mi smart') || name.includes('mi band') ||
+      name.includes('huawei band') || name.includes('honor band') || name.includes('amazfit band')) {
+      return 'band';
+    }
+    if (name.includes('watch') || name.includes('手表') || name.includes('amazfit') || name.includes('zepp') ||
+      name.includes('garmin') || name.includes('coros') || name.includes('suunto') || name.includes('fitbit') ||
+      name.includes('galaxy watch') || name.includes('huawei watch') || name.includes('honor watch') ||
+      name.includes('oppo watch') || name.includes('realme watch')) {
+      return 'watch';
+    }
+    return '';
+  }
+
+  private isLikelySupportedWearable(deviceName: string): boolean {
+    return this.deviceKindByName(deviceName).length > 0;
+  }
+
+  private safeDisplayName(device: HeartRateDevice): string {
+    const cleanName = this.cleanDeviceName(device.name);
+    if (cleanName.length > 0) {
+      return cleanName;
+    }
+    if (device.deviceKind === 'heart-rate') {
+      return this.createHeartRateFallbackName(device.id);
+    }
+    if (device.deviceKind === 'band') {
+      return '运动手环 ' + this.deviceSuffix(device.id);
+    }
+    if (device.deviceKind === 'watch') {
+      return '运动手表 ' + this.deviceSuffix(device.id);
+    }
+    return this.createFallbackName(device.id);
+  }
+
   private classicDeviceKind(deviceClass: connection.DeviceClass): string {
     const majorClass = Number(deviceClass.majorClass);
     const classOfDevice = Number(deviceClass.classOfDevice) & 0x1F00;
@@ -684,6 +755,64 @@ export class HarmonyBleHeartRateAdapter implements BleHeartRatePort {
   private isResolvedName(deviceId: string, deviceName: string): boolean {
     const cleanName = this.cleanDeviceName(deviceName);
     return cleanName.length > 0 && cleanName !== this.createFallbackName(deviceId) && this.isReadableName(cleanName);
+  }
+
+  private advertisesHeartRateService(data: ArrayBuffer): boolean {
+    const bytes = new Uint8Array(data);
+    let offset = 0;
+    while (offset < bytes.length) {
+      const fieldLength = bytes[offset];
+      if (fieldLength === 0) {
+        break;
+      }
+      const fieldEnd = offset + fieldLength + 1;
+      if (fieldEnd > bytes.length || fieldLength < 1) {
+        break;
+      }
+      const fieldType = bytes[offset + 1];
+      if ((fieldType === 0x02 || fieldType === 0x03 || fieldType === 0x16) &&
+        this.contains16BitHeartRateUuid(bytes, offset + 2, fieldEnd)) {
+        return true;
+      }
+      if ((fieldType === 0x06 || fieldType === 0x07 || fieldType === 0x21) &&
+        this.contains128BitHeartRateUuid(bytes, offset + 2, fieldEnd)) {
+        return true;
+      }
+      offset = fieldEnd;
+    }
+    return false;
+  }
+
+  private contains16BitHeartRateUuid(bytes: Uint8Array, start: number, end: number): boolean {
+    let index = start;
+    while (index + 1 < end) {
+      const uuid = this.toHexByte(bytes[index]) + this.toHexByte(bytes[index + 1]);
+      if (uuid === HarmonyBleHeartRateAdapter.HEART_RATE_SERVICE_UUID_REVERSED) {
+        return true;
+      }
+      index += 2;
+    }
+    return false;
+  }
+
+  private contains128BitHeartRateUuid(bytes: Uint8Array, start: number, end: number): boolean {
+    let index = start;
+    while (index + 15 < end) {
+      let uuid = '';
+      for (let byteIndex = index + 15; byteIndex >= index; byteIndex--) {
+        uuid += this.toHexByte(bytes[byteIndex]);
+      }
+      if (uuid.substring(4, 8) === HarmonyBleHeartRateAdapter.HEART_RATE_SERVICE_UUID) {
+        return true;
+      }
+      index += 16;
+    }
+    return false;
+  }
+
+  private toHexByte(value: number): string {
+    const hex = value.toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
   }
 
   private containsChinese(deviceName: string): boolean {

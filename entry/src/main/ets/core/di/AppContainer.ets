@@ -7,7 +7,6 @@ import { PreviewHeartRateRepository } from '../../data/repository/PreviewHeartRa
 import { HeartRateRepository } from '../../domain/HeartRateRepository';
 import { Context } from '@kit.AbilityKit';
 import { HarmonyBleHeartRateAdapter } from '../../data/ble/HarmonyBleHeartRateAdapter';
-import { MockBleHeartRateAdapter } from '../../data/ble/MockBleHeartRateAdapter';
 import { BluetoothPermissionAdapter } from '../../data/permission/BluetoothPermissionAdapter';
 import { HarmonyHeartRateRepository } from '../../data/repository/HarmonyHeartRateRepository';
 import { HeartRateStorePort } from '../../domain/port/HeartRateStorePort';
@@ -19,9 +18,12 @@ import { HarmonyHeartRateAlertAdapter } from '../../data/alert/HarmonyHeartRateA
 import { window } from '@kit.ArkUI';
 import { AppColors } from '../../ui/theme/AppTheme';
 import wallpaper from '@ohos.wallpaper';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+
+const DOMAIN = 0x0000;
+const TAG = 'HeartRate.AppContainer';
 
 export class AppContainer {
-  private static bleMode: 'real' | 'mock' = 'mock';
   private static appContext: Context | undefined = undefined;
   private static heartRateRepository: HeartRateRepository = new PreviewHeartRateRepository();
   private static harmonyHeartRateRepository: HarmonyHeartRateRepository | undefined = undefined;
@@ -57,13 +59,6 @@ export class AppContainer {
     AppContainer.themeChangedListener = listener;
   }
 
-  static setBleMode(mode: 'real' | 'mock'): void {
-    AppContainer.bleMode = mode;
-    if (AppContainer.appContext !== undefined && AppContainer.heartRateStore !== undefined) {
-      AppContainer.rebuildHeartRateRepository();
-    }
-  }
-
   static setWindowStage(windowStage: window.WindowStage): void {
     AppContainer.windowStage = windowStage;
     void windowStage.getMainWindow().then((mainWindow: window.Window) => {
@@ -94,7 +89,8 @@ export class AppContainer {
         await mainWindow.setPreferredOrientation(window.Orientation.UNSPECIFIED);
         await AppContainer.applySystemBarTheme();
       }
-    } catch (_error) {
+    } catch (error) {
+      AppContainer.logError('Failed to update immersive mode', error);
     }
   }
 
@@ -153,7 +149,8 @@ export class AppContainer {
         statusBarContentColor: contentColor,
         navigationBarContentColor: contentColor
       });
-    } catch (_error) {
+    } catch (error) {
+      AppContainer.logError('Failed to apply system bar theme', error);
     }
   }
 
@@ -164,7 +161,8 @@ export class AppContainer {
     try {
       const colors = await wallpaper.getColors(wallpaper.WallpaperType.WALLPAPER_SYSTEM);
       AppContainer.applyWallpaperColors(colors);
-    } catch (_error) {
+    } catch (error) {
+      AppContainer.logError('Failed to refresh system dynamic theme', error);
     }
   }
 
@@ -177,7 +175,8 @@ export class AppContainer {
       wallpaper.on('colorChange', (colors: Array<wallpaper.RgbaColor>, _wallpaperType: wallpaper.WallpaperType) => {
         AppContainer.applyWallpaperColors(colors);
       });
-    } catch (_error) {
+    } catch (error) {
+      AppContainer.logError('Failed to register wallpaper color listener', error);
     }
   }
 
@@ -208,11 +207,15 @@ export class AppContainer {
     return normalized.length === 1 ? '0' + normalized : normalized;
   }
 
+  private static logError(message: string, error: Object): void {
+    hilog.error(DOMAIN, TAG, '%{public}s: %{public}s', message, JSON.stringify(error));
+  }
+
   private static rebuildHeartRateRepository(): void {
     if (AppContainer.appContext === undefined || AppContainer.heartRateStore === undefined) {
       return;
     }
-    const blePort = AppContainer.bleMode === 'mock' ? new MockBleHeartRateAdapter() : new HarmonyBleHeartRateAdapter();
+    const blePort = new HarmonyBleHeartRateAdapter();
     AppContainer.harmonyHeartRateRepository = new HarmonyHeartRateRepository(
       blePort,
       new BluetoothPermissionAdapter(AppContainer.appContext),
