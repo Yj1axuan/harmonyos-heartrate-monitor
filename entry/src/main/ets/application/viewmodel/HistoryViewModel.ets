@@ -1,4 +1,4 @@
-import { FavoriteDevice, HistoryDetail, HistorySummary, SessionPreview } from '../model/HistoryUiModels';
+﻿import { FavoriteDevice, HistoryDetail, HistorySummary, SessionPreview } from '../model/HistoryUiModels';
 import { HeartRateRecord, HeartRateSession, HeartRateStorePort } from '../../domain/port/HeartRateStorePort';
 import { AppPreferencesPort } from '../../domain/port/AppPreferencesPort';
 
@@ -78,7 +78,7 @@ export class HistoryViewModel {
 
   async removeFavoriteDevice(deviceId: string): Promise<void> {
     this.favoriteDevices = this.favoriteDevices.filter((device: FavoriteDevice) => device.id !== deviceId);
-    await this.preferencesPort.saveFavoriteDevices(this.favoriteDevices);
+    await this.persistFavoriteDevices();
   }
 
   async setPrimaryFavoriteDevice(deviceId: string): Promise<void> {
@@ -90,14 +90,14 @@ export class HistoryViewModel {
     const primaryDevice = devices[index];
     devices.splice(index, 1);
     this.favoriteDevices = [primaryDevice].concat(devices);
-    await this.preferencesPort.saveFavoriteDevices(this.favoriteDevices);
+    await this.persistFavoriteDevices();
   }
 
   async addFavoriteDevice(device: FavoriteDevice): Promise<void> {
     const exists = this.favoriteDevices.findIndex((item: FavoriteDevice) => item.id === device.id) >= 0;
     if (!exists) {
       this.favoriteDevices = [device].concat(this.favoriteDevices);
-      await this.preferencesPort.saveFavoriteDevices(this.favoriteDevices);
+      await this.persistFavoriteDevices();
     }
   }
 
@@ -188,5 +188,9 @@ export class HistoryViewModel {
 
   private pad2(value: number): string {
     return value < 10 ? '0' + value.toString() : value.toString();
+  }
+
+  private async persistFavoriteDevices(): Promise<void> {
+    await this.preferencesPort.saveFavoriteDevices(this.favoriteDevices);
   }
 }

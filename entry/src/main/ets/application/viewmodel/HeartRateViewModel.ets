@@ -1,23 +1,22 @@
-import { HeartRateSnapshot } from '../../domain/model/MonitoringState';
+﻿import { HeartRateSnapshot, MonitoringState } from '../../domain/model/MonitoringState';
 import { HeartRateUiState } from '../state/HeartRateUiState';
 import { ObserveHeartRateUseCase } from '../usecase/ObserveHeartRateUseCase';
-import { ToggleHeartRateConnectionUseCase } from '../usecase/ToggleHeartRateConnectionUseCase';
-import { MonitoringState } from '../../domain/model/MonitoringState';
+import { HeartRateConnectionUseCase } from '../usecase/HeartRateConnectionUseCase';
 import { HeartRateDevice } from '../../domain/port/BleHeartRatePort';
 
 export class HeartRateViewModel {
   private static readonly MAX_SAMPLE_COUNT: number = 60;
   readonly state: HeartRateUiState = new HeartRateUiState();
   private observeHeartRate: ObserveHeartRateUseCase;
-  private toggleHeartRateConnection: ToggleHeartRateConnectionUseCase;
+  private heartRateConnectionUseCase: HeartRateConnectionUseCase;
   private onStateChanged: (state: HeartRateUiState) => void = (_state: HeartRateUiState) => {};
 
   constructor(
     observeHeartRate: ObserveHeartRateUseCase,
-    toggleHeartRateConnection: ToggleHeartRateConnectionUseCase
+    heartRateConnectionUseCase: HeartRateConnectionUseCase
   ) {
     this.observeHeartRate = observeHeartRate;
-    this.toggleHeartRateConnection = toggleHeartRateConnection;
+    this.heartRateConnectionUseCase = heartRateConnectionUseCase;
     this.applySnapshot(this.observeHeartRate.current());
     this.observeHeartRate.execute((snapshot: HeartRateSnapshot) => {
       this.applySnapshot(snapshot);
@@ -36,11 +35,10 @@ export class HeartRateViewModel {
     if (this.state.scanning) {
       return;
     }
-    this.state.statusMessage = '';
-    this.state.devices = [];
+    this.clearDiscoveryState();
     try {
       const devices: HeartRateDevice[] =
-        await this.toggleHeartRateConnection.execute(this.state.monitoringState);
+        await this.heartRateConnectionUseCase.execute(this.state.monitoringState);
       if (!this.state.connected) {
         this.state.devices = devices;
         if (this.state.devices.length === 0) {
@@ -48,8 +46,7 @@ export class HeartRateViewModel {
         }
       }
     } catch (_error) {
-      this.state.monitoringState = MonitoringState.Failed;
-      this.state.statusMessage = '扫描失败，请检查蓝牙权限和系统蓝牙开关';
+      this.markFailed('扫描失败，请检查蓝牙权限和系统蓝牙开关');
     }
   }
 
@@ -63,7 +60,7 @@ export class HeartRateViewModel {
     }
     this.state.statusMessage = '正在连接：' + device.name;
     try {
-      await this.toggleHeartRateConnection.connect(device);
+      await this.heartRateConnectionUseCase.connect(device);
       this.state.statusMessage = '连接成功：' + device.name;
     } catch (error) {
       this.state.monitoringState = MonitoringState.Failed;
@@ -77,9 +74,9 @@ export class HeartRateViewModel {
     if (this.state.scanning) {
       return;
     }
-    this.state.statusMessage = '';
+    this.clearStatusMessage();
     try {
-      const devices = await this.toggleHeartRateConnection.loadKnownDevices();
+      const devices = await this.heartRateConnectionUseCase.loadKnownDevices();
       if (devices.length > 0) {
         this.state.devices = this.mergeDevices(this.state.devices, devices);
         return;
@@ -88,8 +85,7 @@ export class HeartRateViewModel {
         this.state.statusMessage = '未发现已配对蓝牙设备，可点击刷新查找附近设备';
       }
     } catch (_error) {
-      this.state.monitoringState = MonitoringState.Failed;
-      this.state.statusMessage = '加载蓝牙设备失败，请检查蓝牙权限和系统蓝牙开关';
+      this.markFailed('加载蓝牙设备失败，请检查蓝牙权限和系统蓝牙开关');
     }
   }
 
@@ -97,13 +93,11 @@ export class HeartRateViewModel {
     if (this.state.scanning) {
       return;
     }
-    this.state.statusMessage = '';
-    this.state.devices = [];
+    this.clearDiscoveryState();
     try {
-      await this.toggleHeartRateConnection.startDeviceDiscovery();
+      await this.heartRateConnectionUseCase.startDeviceDiscovery();
     } catch (_error) {
-      this.state.monitoringState = MonitoringState.Failed;
-      this.state.statusMessage = '扫描失败，请检查蓝牙权限和系统蓝牙开关';
+      this.markFailed('扫描失败，请检查蓝牙权限和系统蓝牙开关');
     }
   }
 
@@ -111,24 +105,22 @@ export class HeartRateViewModel {
     if (!this.state.scanning) {
       return;
     }
-    await this.toggleHeartRateConnection.stopDeviceDiscovery();
+    await this.heartRateConnectionUseCase.stopDeviceDiscovery();
   }
 
   async refreshDeviceDiscovery(): Promise<void> {
     if (this.state.scanning) {
       return;
     }
-    this.state.statusMessage = '';
-    this.state.devices = [];
+    this.clearDiscoveryState();
     try {
-      const devices = await this.toggleHeartRateConnection.refreshDeviceDiscovery();
+      const devices = await this.heartRateConnectionUseCase.refreshDeviceDiscovery();
       this.state.devices = devices;
       if (this.state.devices.length === 0) {
         this.state.statusMessage = '未发现蓝牙设备，请确认设备已开启并处于可发现状态';
       }
     } catch (_error) {
-      this.state.monitoringState = MonitoringState.Failed;
-      this.state.statusMessage = '刷新失败，请检查蓝牙权限和系统蓝牙开关';
+      this.markFailed('刷新失败，请检查蓝牙权限和系统蓝牙开关');
     }
   }
 
@@ -170,6 +162,20 @@ export class HeartRateViewModel {
     this.state.maxBpm = 0;
     this.state.samples = [];
     this.state.lastMeasurementAt = 0;
+  }
+
+  private clearStatusMessage(): void {
+    this.state.statusMessage = '';
+  }
+
+  private clearDiscoveryState(): void {
+    this.clearStatusMessage();
+    this.state.devices = [];
+  }
+
+  private markFailed(message: string): void {
+    this.state.monitoringState = MonitoringState.Failed;
+    this.state.statusMessage = message;
   }
 
   private mergeDevices(currentDevices: HeartRateDevice[], nextDevices: HeartRateDevice[]): HeartRateDevice[] {

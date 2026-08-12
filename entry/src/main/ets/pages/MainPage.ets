@@ -16,7 +16,7 @@ import common from '@ohos.app.ability.common';
 
 @Entry
 @Component
-struct Index {
+struct MainPage {
   private heartRateViewModel: HeartRateViewModel = AppContainer.createHeartRateViewModel();
   private historyViewModel: HistoryViewModel = AppContainer.createHistoryViewModel();
   private settingsViewModel: SettingsViewModel = AppContainer.createSettingsViewModel();
@@ -46,16 +46,7 @@ struct Index {
     this.syncSettingsState();
     await this.historyViewModel.load();
     this.syncHistoryState();
-    this.ensureAutoConnectHasFavoriteDevice();
-    if (this.settingsState.autoConnect && this.historyViewModel.favoriteDevices.length > 0) {
-      const favorite = this.historyViewModel.favoriteDevices[0];
-      await this.heartRateViewModel.connectDevice({
-        id: favorite.id,
-        name: favorite.name,
-        rssi: -127,
-        deviceKind: 'ble'
-      });
-    }
+    await this.restoreAutoConnect();
   }
 
   private async connectSelectedDevice(device: HeartRateDevice): Promise<void> {
@@ -98,6 +89,24 @@ struct Index {
       this.settingsViewModel.setAutoConnect(false);
       this.syncSettingsState();
     }
+  }
+
+  private async restoreAutoConnect(): Promise<void> {
+    this.ensureAutoConnectHasFavoriteDevice();
+    if (!this.settingsState.autoConnect || this.historyViewModel.favoriteDevices.length === 0) {
+      return;
+    }
+    const favorite = this.historyViewModel.favoriteDevices[0];
+    await this.heartRateViewModel.connectDevice(this.toHeartRateDevice(favorite.id, favorite.name));
+  }
+
+  private toHeartRateDevice(id: string, name: string): HeartRateDevice {
+    return {
+      id: id,
+      name: name,
+      rssi: -127,
+      deviceKind: 'ble'
+    };
   }
 
   private syncSettingsState(): void {

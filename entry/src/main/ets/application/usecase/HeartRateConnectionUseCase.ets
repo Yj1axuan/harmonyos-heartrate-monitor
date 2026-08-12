@@ -2,7 +2,7 @@ import { HeartRateRepository } from '../../domain/HeartRateRepository';
 import { MonitoringState } from '../../domain/model/MonitoringState';
 import { HeartRateDevice } from '../../domain/port/BleHeartRatePort';
 
-export class ToggleHeartRateConnectionUseCase {
+export class HeartRateConnectionUseCase {
   private repository: HeartRateRepository;
 
   constructor(repository: HeartRateRepository) {

@@ -1,8 +1,8 @@
-import { HeartRateViewModel } from '../../application/viewmodel/HeartRateViewModel';
+﻿import { HeartRateViewModel } from '../../application/viewmodel/HeartRateViewModel';
 import { HistoryViewModel } from '../../application/viewmodel/HistoryViewModel';
 import { SettingsViewModel } from '../../application/viewmodel/SettingsViewModel';
 import { ObserveHeartRateUseCase } from '../../application/usecase/ObserveHeartRateUseCase';
-import { ToggleHeartRateConnectionUseCase } from '../../application/usecase/ToggleHeartRateConnectionUseCase';
+import { HeartRateConnectionUseCase } from '../../application/usecase/HeartRateConnectionUseCase';
 import { PreviewHeartRateRepository } from '../../data/repository/PreviewHeartRateRepository';
 import { HeartRateRepository } from '../../domain/HeartRateRepository';
 import { Context } from '@kit.AbilityKit';
@@ -97,23 +97,23 @@ export class AppContainer {
   static createHeartRateViewModel(): HeartRateViewModel {
     return new HeartRateViewModel(
       new ObserveHeartRateUseCase(AppContainer.heartRateRepository),
-      new ToggleHeartRateConnectionUseCase(AppContainer.heartRateRepository)
+      new HeartRateConnectionUseCase(AppContainer.heartRateRepository)
     );
   }
 
   static createHistoryViewModel(): HistoryViewModel {
-    if (AppContainer.heartRateStore === undefined) {
-      AppContainer.heartRateStore = new HarmonyHeartRateStoreAdapter(getContext() as Context);
-    }
-    if (AppContainer.preferencesPort === undefined) {
-      AppContainer.preferencesPort = new HarmonyAppPreferencesAdapter(getContext() as Context);
+    AppContainer.ensureHeartRateStore();
+    AppContainer.ensurePreferencesPort();
+    if (AppContainer.heartRateStore === undefined || AppContainer.preferencesPort === undefined) {
+      throw new Error('AppContainer is not initialized');
     }
     return new HistoryViewModel(AppContainer.heartRateStore, AppContainer.preferencesPort);
   }
 
   static createSettingsViewModel(): SettingsViewModel {
+    AppContainer.ensurePreferencesPort();
     if (AppContainer.preferencesPort === undefined) {
-      AppContainer.preferencesPort = new HarmonyAppPreferencesAdapter(getContext() as Context);
+      throw new Error('AppContainer is not initialized');
     }
     return new SettingsViewModel(AppContainer.preferencesPort, (settings: SettingsUiState) => {
       AppContainer.applyTheme(settings);
@@ -224,5 +224,25 @@ export class AppContainer {
       new HarmonyHeartRateAlertAdapter()
     );
     AppContainer.heartRateRepository = AppContainer.harmonyHeartRateRepository;
+  }
+
+  private static ensureHeartRateStore(): void {
+    if (AppContainer.heartRateStore !== undefined) {
+      return;
+    }
+    if (AppContainer.appContext === undefined) {
+      return;
+    }
+    AppContainer.heartRateStore = new HarmonyHeartRateStoreAdapter(AppContainer.appContext);
+  }
+
+  private static ensurePreferencesPort(): void {
+    if (AppContainer.preferencesPort !== undefined) {
+      return;
+    }
+    if (AppContainer.appContext === undefined) {
+      return;
+    }
+    AppContainer.preferencesPort = new HarmonyAppPreferencesAdapter(AppContainer.appContext);
   }
 }

@@ -15,7 +15,7 @@ export struct HomePage {
 
   private connectionLabel(): string {
     if (this.state.connected) {
-      return '已连接 ' + this.state.deviceName;
+      return '已连接：' + this.state.deviceName;
     }
     if (this.state.scanning) {
       return '正在搜索附近设备';
@@ -24,6 +24,13 @@ export struct HomePage {
       return '连接失败，点击重试';
     }
     return '等待选择蓝牙设备';
+  }
+
+  private connectionStateText(): string {
+    if (this.state.connected) {
+      return '监测中';
+    }
+    return '待连接';
   }
 
   private connectionHint(): string {
@@ -55,6 +62,24 @@ export struct HomePage {
       path += (index === 0 ? 'M ' : ' L ') + x.toString() + ' ' + y.toString();
     });
     return path;
+  }
+
+  private deviceActionLabel(): string {
+    if (this.state.connected) {
+      return '已连接设备：' + this.state.deviceName;
+    }
+    if (this.state.scanning) {
+      return '正在扫描蓝牙设备';
+    }
+    return '连接蓝牙设备';
+  }
+
+  private statusBadgeLabel(): string {
+    return this.connectionStateText();
+  }
+
+  private topStatusLabel(): string {
+    return this.state.connected ? '实时' : '待机';
   }
 
   @Builder
@@ -102,7 +127,7 @@ export struct HomePage {
         }
         .layoutWeight(1)
         Blank()
-        Text(this.state.connected ? '监测中' : '待连接')
+        Text(this.statusBadgeLabel())
           .fontSize(12)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.state.connected ? AppColors.PRIMARY : AppColors.TEXT_MUTED)
@@ -319,7 +344,7 @@ export struct HomePage {
             }
             .layoutWeight(1)
             Blank()
-            Text(this.state.connected ? '实时' : '待机')
+            Text(this.topStatusLabel())
               .fontSize(12)
               .fontWeight(FontWeight.Medium)
               .fontColor(this.state.connected ? AppColors.WHITE : AppColors.TEXT_MUTED)
@@ -330,17 +355,13 @@ export struct HomePage {
         }
 
         this.heartRateCard()
-
         this.realtimeChart()
 
         if (this.showSpeed) {
           this.speedCard()
         }
 
-        this.actionRow('⌁', this.state.connected ? '已连接设备 ' + this.state.deviceName :
-          (this.state.scanning ? '正在扫描蓝牙设备' : '连接蓝牙设备'),
-          AppColors.SURFACE,
-          AppColors.TEXT, this.onOpenDevices)
+        this.actionRow('⇄', this.deviceActionLabel(), AppColors.SURFACE, AppColors.TEXT, this.onOpenDevices)
 
         if (this.state.statusMessage.length > 0) {
           Text(this.state.statusMessage)
@@ -351,10 +372,10 @@ export struct HomePage {
         }
 
         if (this.state.connected) {
-          this.actionRow('⛶', '进入全屏模式', AppColors.PRIMARY_SOFT, AppColors.PRIMARY, this.onOpenFullScreen)
+          this.actionRow('⤢', '进入全屏模式', AppColors.PRIMARY_SOFT, AppColors.PRIMARY, this.onOpenFullScreen)
 
           Row({ space: 10 }) {
-            Text('⌁')
+            Text('⟂')
               .fontSize(21)
               .fontColor(AppColors.WHITE)
             Text('断开连接')
@@ -369,7 +390,6 @@ export struct HomePage {
           .borderRadius(28)
           .onClick(this.onDisconnect)
         }
-
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 18, bottom: 94 })

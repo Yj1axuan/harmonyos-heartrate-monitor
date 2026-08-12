@@ -14,7 +14,7 @@ export default class EntryAbility extends UIAbility {
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
     AppContainer.setWindowStage(windowStage);
-    windowStage.loadContent('pages/Index', (error) => {
+    windowStage.loadContent('pages/MainPage', (error) => {
       if (error.code) {
         hilog.error(DOMAIN, TAG, 'Failed to load page: %{public}s', JSON.stringify(error));
         return;
@@ -23,3 +23,4 @@ export default class EntryAbility extends UIAbility {
     });
   }
 }
+
