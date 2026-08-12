@@ -6,3 +6,15 @@
 **/build/
 **/.preview/
 
+# Local tooling and temporary workspace folders
+/.codex-router-managed/
+/dscode/
+/dscode-runtime/
+/.tmp_*/
+/_test_icon.png
+
+# Local signing material. Keep real certificate paths and passwords off GitHub.
+/build-profile.local.json5
+*.p12
+*.p7b
+*.cer
