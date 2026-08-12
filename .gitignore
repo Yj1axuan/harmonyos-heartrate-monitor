@@ -12,6 +12,7 @@
 /dscode-runtime/
 /.tmp_*/
 /_test_icon.png
+/release-artifacts/
 
 # Local signing material. Keep real certificate paths and passwords off GitHub.
 /build-profile.local.json5
