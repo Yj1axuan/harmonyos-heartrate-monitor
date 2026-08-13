@@ -1207,9 +1207,11 @@ export struct AboutPage {
             this.appInfoExpanded = !this.appInfoExpanded;
           })
           if (this.appInfoExpanded) {
-            this.aboutRow('版', '版本', '1.0.0',)
+            this.aboutRow('版', '版本', 'v1.0.0')
             Divider().color(AppColors.DIVIDER).margin({ left: 72 })
             this.aboutRow('者', '开发者', 'Jax Yin')
+            Divider().color(AppColors.DIVIDER).margin({ left: 72 })
+            this.aboutRow('站', 'GitHub', 'https://github.com/YinJax')
             Divider().color(AppColors.DIVIDER).margin({ left: 72 })
             this.aboutRow('端', '支持设备', 'HarmonyOS 手机和平板')
           }
@@ -1293,7 +1295,7 @@ export struct AboutPage {
             Divider().color(AppColors.DIVIDER).margin({ left: 72 })
             this.aboutRow('权', '版权声明', '本应用未经许可不得复制、修改、反编译或再分发')
             Divider().color(AppColors.DIVIDER).margin({ left: 72 })
-            this.aboutRow('馈', '反馈渠道', '可通过华为应用市场评论与反馈渠道联系开发者')
+            this.aboutRow('馈', '反馈渠道', '联系邮箱 826213012@qq.com')
           }
         }
         .width('100%')
