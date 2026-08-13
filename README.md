@@ -1,24 +1,42 @@
 # HeartRate HarmonyOS
 
-HeartRate is a native HarmonyOS ArkTS application for Bluetooth heart-rate monitoring.
+[中文说明](README.zh-CN.md)
+
+HeartRate HarmonyOS is a native ArkTS app for Bluetooth heart-rate monitoring. It scans nearby BLE devices, connects to a standard heart-rate sensor, renders live BPM data, and keeps monitoring history on the device.
+
+The project is built as a compact HarmonyOS Stage-model app, with UI, application state, domain contracts, and platform adapters kept in separate layers.
+
+## Screenshots
+
+These images are representative UI previews generated from the current ArkUI layout and copy.
+
+| Live dashboard | Device discovery | History and settings |
+| --- | --- | --- |
+| <img src="screenshots/home-dashboard.png" width="240" alt="Live heart-rate dashboard"> | <img src="screenshots/device-discovery.png" width="240" alt="Bluetooth device discovery"> | <img src="screenshots/history-settings.png" width="240" alt="History and settings preview"> |
+
+## Download
+
+Download the latest HAP from the [Releases](https://github.com/Yj1axuan/harmonyos-heartrate-monitor/releases/latest) page.
+
+The current public release asset is an unsigned HAP. Some devices and installation flows require a DevEco Studio debug signature or a production signature before installation.
 
 ## Features
 
-- Bluetooth device discovery and connection
-- Standard BLE Heart Rate Measurement (`0x2A37`) parsing
-- Real-time heart-rate dashboard and trend chart
-- Full-screen monitoring mode
-- Monitoring history and favorite devices
-- Theme, alert, background monitoring, and display settings
+- Discover nearby Bluetooth heart-rate devices and paired devices.
+- Parse the standard BLE Heart Rate Measurement characteristic (`0x2A37`).
+- Show live BPM, min/max values, and a real-time trend chart.
+- Save monitoring sessions and display session summaries.
+- Keep favorite devices for faster reconnection.
+- Configure themes, alerts, background monitoring, vibration, sound, and full-screen display.
+- Enter a full-screen monitoring mode for workouts and training sessions.
 
-## Environment
+## Tech Stack
 
+- HarmonyOS Stage model
+- ArkTS and ArkUI
 - DevEco Studio 6.0.0
 - HarmonyOS SDK 6.0.0 / API 20
-- ArkTS + ArkUI Stage model
 - Hvigor 6.0.6
-
-The app currently uses several Bluetooth APIs that require newer HarmonyOS SDK capabilities. Build warnings are expected if `compatibleSdkVersion` stays below those API levels.
 
 ## Architecture
 
@@ -30,17 +48,17 @@ pages
   -> HarmonyOS data, BLE, permission, alert, and preferences adapters
 ```
 
-Key boundaries:
+Main directories:
 
-- `entry/src/main/ets/domain`: domain models, parser, repository contract, and ports
-- `entry/src/main/ets/application`: UI state, view models, and use cases
-- `entry/src/main/ets/data`: HarmonyOS platform adapters
-- `entry/src/main/ets/ui`: ArkUI pages and theme
-- `entry/src/main/ets/core/di`: application wiring
+- `entry/src/main/ets/ui`: ArkUI pages and theme.
+- `entry/src/main/ets/application`: UI state, view models, and use cases.
+- `entry/src/main/ets/domain`: domain models, parser, repository contract, and ports.
+- `entry/src/main/ets/data`: HarmonyOS adapters for BLE, storage, preferences, permissions, and alerts.
+- `entry/src/main/ets/core/di`: application wiring.
 
 ## Build
 
-Open this directory in DevEco Studio, allow project sync, select the `entry` module, then build or run on a HarmonyOS phone/tablet target.
+Open this directory in DevEco Studio, allow project sync, select the `entry` module, then build or run on a HarmonyOS phone or tablet target.
 
 Command-line build:
 
@@ -50,7 +68,13 @@ Command-line build:
 
 ## Signing
 
-Do not commit personal signing certificates, passwords, or local certificate paths. Keep release signing material in your local DevEco configuration or CI secrets.
+The public `build-profile.json5` intentionally does not contain certificate paths or passwords. Keep signing material in DevEco Studio, local private configuration, or CI secrets.
+
+Without a signing config, Hvigor may produce an unsigned HAP and print `No signingConfig found for product default`.
+
+## Compatibility Notes
+
+The app targets HarmonyOS SDK 6.0.0 / API 20. Some Bluetooth APIs used by the BLE adapter require newer API levels than the current compatible SDK value. If you plan to support older devices, review the build warnings and add capability checks or fallback behavior.
 
 ## License
 
