@@ -10,9 +10,9 @@ HeartRate HarmonyOS 是一个使用 ArkTS 开发的 HarmonyOS 原生心率监测
 
 以下截图来自 HarmonyOS 设备上的实际运行效果。
 
-| 首页 | 设置 |
-| --- | --- |
-| <img src="screenshots/home-dashboard.png" width="260" alt="首页实际运行截图"> | <img src="screenshots/settings-page.png" width="260" alt="设置页实际运行截图"> |
+| 首页 | 设置 | 主题设置 |
+| --- | --- | --- |
+| <img src="screenshots/home-dashboard.png" width="240" alt="首页实际运行截图"> | <img src="screenshots/settings-page.png" width="240" alt="设置页实际运行截图"> | <img src="screenshots/theme-settings.png" width="240" alt="主题设置实际运行截图"> |
 
 ## 下载
 

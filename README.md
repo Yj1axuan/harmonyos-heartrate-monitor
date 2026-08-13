@@ -10,9 +10,9 @@ The project is built as a compact HarmonyOS Stage-model app, with UI, applicatio
 
 These screenshots were captured from the app running on a HarmonyOS device.
 
-| Home | Settings |
-| --- | --- |
-| <img src="screenshots/home-dashboard.png" width="260" alt="Home dashboard running on device"> | <img src="screenshots/settings-page.png" width="260" alt="Settings page running on device"> |
+| Home | Settings | Theme Settings |
+| --- | --- | --- |
+| <img src="screenshots/home-dashboard.png" width="240" alt="Home dashboard running on device"> | <img src="screenshots/settings-page.png" width="240" alt="Settings page running on device"> | <img src="screenshots/theme-settings.png" width="240" alt="Theme settings running on device"> |
 
 ## Download
 
