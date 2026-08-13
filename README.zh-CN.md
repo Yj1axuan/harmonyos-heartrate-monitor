@@ -2,17 +2,17 @@
 
 [English](README.md)
 
-HeartRate HarmonyOS 是一个使用 ArkTS 开发的 HarmonyOS 原生心率监测应用。应用可以扫描附近的蓝牙心率设备，连接标准 BLE 心率传感器，显示实时 BPM 数据，并在本地保存监测历史。
+HeartRate HarmonyOS 是一个使用 ArkTS 开发的 HarmonyOS 原生心率监测应用。应用可以扫描附近的蓝牙心率设备，连接标准 BLE 心率传感器，展示实时 BPM 数据，并在本地保存监测历史。
 
-项目采用 HarmonyOS Stage 模型，按 UI、应用状态、领域接口和平台适配层组织代码，方便继续扩展设备连接、历史记录和预警能力。
+项目采用 HarmonyOS Stage 模型，按 UI、应用状态、领域接口和平台适配层组织代码，便于继续扩展设备连接、历史记录和预警能力。
 
-## 界面预览
+## 界面截图
 
-以下图片是根据当前 ArkUI 布局和文案生成的界面预览图。
+以下截图来自 HarmonyOS 设备上的实际运行效果。
 
-| 实时心率面板 | 蓝牙设备发现 | 历史与设置 |
-| --- | --- | --- |
-| <img src="screenshots/home-dashboard.png" width="240" alt="实时心率面板"> | <img src="screenshots/device-discovery.png" width="240" alt="蓝牙设备发现"> | <img src="screenshots/history-settings.png" width="240" alt="历史与设置预览"> |
+| 首页 | 设置 |
+| --- | --- |
+| <img src="screenshots/home-dashboard.png" width="260" alt="首页实际运行截图"> | <img src="screenshots/settings-page.png" width="260" alt="设置页实际运行截图"> |
 
 ## 下载
 

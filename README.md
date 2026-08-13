@@ -8,11 +8,11 @@ The project is built as a compact HarmonyOS Stage-model app, with UI, applicatio
 
 ## Screenshots
 
-These images are representative UI previews generated from the current ArkUI layout and copy.
+These screenshots were captured from the app running on a HarmonyOS device.
 
-| Live dashboard | Device discovery | History and settings |
-| --- | --- | --- |
-| <img src="screenshots/home-dashboard.png" width="240" alt="Live heart-rate dashboard"> | <img src="screenshots/device-discovery.png" width="240" alt="Bluetooth device discovery"> | <img src="screenshots/history-settings.png" width="240" alt="History and settings preview"> |
+| Home | Settings |
+| --- | --- |
+| <img src="screenshots/home-dashboard.png" width="260" alt="Home dashboard running on device"> | <img src="screenshots/settings-page.png" width="260" alt="Settings page running on device"> |
 
 ## Download
 
